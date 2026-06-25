@@ -11,6 +11,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -31,47 +32,14 @@ jobs:
       - name: Install SDK
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Build
+      - name: Build APK
         run: |
-          set +e
-          echo "JAVA_HOME=$JAVA_HOME"
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          java -version 2>&1
-          ls -la $JAVA_HOME/bin/jlink 2>/dev/null && echo "jlink found" || echo "NO JLINK"
           cd frontend/android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon 2>&1 | tee /tmp/build.log
-          echo "EXIT_CODE=$?" >> /tmp/build-exit.txt
-        shell: bash
-        continue-on-error: true
+          ./gradlew assembleDebug --no-daemon 2>&1
 
-      - name: Save debug info
-        if: always()
-        run: |
-          EXIT=$(cat /tmp/build-exit.txt 2>/dev/null || echo "unknown")
-          echo "::notice title=Gradle Exit Code::$EXIT"
-          echo "=== EXIT CODE ===" >> /tmp/debug.log
-          echo "$EXIT" >> /tmp/debug.log
-          echo "=== GRADLE OUTPUT (last 50 lines) ===" >> /tmp/debug.log
-          tail -50 /tmp/build.log 2>/dev/null >> /tmp/debug.log
-          echo "=== FIND APK ===" >> /tmp/debug.log
-          find / -name "*.apk" 2>/dev/null >> /tmp/debug.log || echo "NO APK FOUND" >> /tmp/debug.log
-          echo "=== BUILD OUTPUTS ===" >> /tmp/debug.log
-          find frontend/android/app/build -type d -maxdepth 6 2>/dev/null >> /tmp/debug.log
-          echo "=== JAVA_HOME ===" >> /tmp/debug.log
-          echo "JAVA_HOME=$JAVA_HOME" >> /tmp/debug.log
-          ls -la $JAVA_HOME/bin/jlink >> /tmp/debug.log 2>&1
-          # Also print to stdout for visibility
-          echo "=== JAVAHOME: $JAVA_HOME ==="
-          ls -la $JAVA_HOME/bin/jlink 2>&1 || echo "NO JLINK"
-          echo "=== LAST 10 LINES OF BUILD LOG ==="
-          tail -10 /tmp/build.log 2>/dev/null || echo "NO BUILD LOG"
-
-      - name: Upload logs
-        if: always()
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: build-debug
-          path: |
-            /tmp/build.log
-            /tmp/debug.log
+          name: jarvis-apk
+          path: frontend/android/app/build/outputs/apk/debug/*.apk
