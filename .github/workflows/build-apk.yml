@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -38,8 +40,9 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon 2>&1
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: jarvis-apk
-          path: frontend/android/app/build/outputs/apk/debug/*.apk
+      - name: Publish to GitHub Releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create latest --title "J.A.R.V.I.S. APK" --notes "Auto-built from \`main\` branch" 2>/dev/null || true
+          gh release upload latest frontend/android/app/build/outputs/apk/debug/app-debug.apk --clobber
