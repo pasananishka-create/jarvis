@@ -13,10 +13,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Make gradlew executable
+        run: chmod +x frontend/android/gradlew
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
@@ -41,25 +44,13 @@ jobs:
         run: npx cap sync android
         working-directory: frontend
 
-      - name: Build debug APK
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
-        working-directory: frontend
-
-      - name: Build release APK (unsigned)
-        run: |
-          cd android
-          ./gradlew assembleRelease --no-daemon
-        working-directory: frontend
-        continue-on-error: true
+      - name: Build APK
+        run: ./gradlew assembleDebug --no-daemon
+        working-directory: frontend/android
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: jarvis-apk
-          path: |
-            frontend/android/app/build/outputs/apk/debug/*.apk
-            frontend/android/app/build/outputs/apk/release/*.apk
+          path: frontend/android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
