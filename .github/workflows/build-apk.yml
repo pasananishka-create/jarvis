@@ -31,10 +31,20 @@ jobs:
       - name: Install SDK
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-36" "build-tools;36.0.0"
 
+      - name: Debug Java
+        run: |
+          echo "JAVA_HOME: $JAVA_HOME"
+          echo "ANDROID_HOME: $ANDROID_HOME"
+          java -version 2>&1
+          which java
+          ls -la $JAVA_HOME/bin/jlink 2>/dev/null || echo "NO JLINK in JAVA_HOME"
+          find / -name "jlink" -type f 2>/dev/null | head -5
+
       - name: Build
         run: |
           cd frontend/android
           chmod +x gradlew
+          export JAVA_HOME=$JAVA_HOME
           ./gradlew assembleDebug --no-daemon 2>&1
 
       - name: Upload
