@@ -1,0 +1,16 @@
+# Core
+openai>=1.0.0
+anthropic>=0.30.0
+python-dotenv>=1.0.0
+
+# Abilities
+duckduckgo_search>=7.0.0
+
+# Voice (optional — uncomment if needed)
+# speechrecognition>=3.10.0
+# pyttsx3>=2.90
+# pyaudio>=0.2.13
+# pvporcupine>=3.0.0
+
+# Local AI (optional — uncomment for Ollama)
+# ollama>=0.4.0
