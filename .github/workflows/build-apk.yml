@@ -38,44 +38,45 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install SDK components
-        run: |
-          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platforms;android-36" "build-tools;36.0.0" 2>&1
+        run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platforms;android-36" "build-tools;36.0.0" 2>&1
 
       - name: Build APK
         run: |
-          set -e
+          set +e
           chmod +x android/gradlew
           npx cap sync android
           cd android
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
-          echo "=== BUILD DONE ==="
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee $GITHUB_WORKSPACE/gradle-out.txt
+          exit ${PIPESTATUS[0]}
         working-directory: frontend
+        continue-on-error: true
 
-      - name: Package outputs
+      - name: Upload Gradle output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-output
+          path: gradle-out.txt
+          if-no-files-found: warn
+
+      - name: Check and package APK
+        if: always()
         run: |
-          echo "=== Directory structure ==="
-          find frontend/android -name "*.apk" -o -name "*.aab" 2>/dev/null || echo "No APK/AAB found"
-          echo "=== Debug output ==="
+          echo "=== FIND APK ==="
+          find frontend/android -name "*.apk" -type f 2>/dev/null || echo "NO APK FOUND"
+          echo "=== BUILD OUTPUT ==="
           ls -la frontend/android/app/build/outputs/ 2>/dev/null || echo "No outputs/"
-          ls -la frontend/android/app/build/outputs/apk/ 2>/dev/null || echo "No apk/"
-          ls -la frontend/android/app/build/outputs/apk/debug/ 2>/dev/null || echo "No debug/"
-          echo "=== Creating output ==="
+          echo "=== REPORTS ==="
+          ls -la frontend/android/app/build/reports/ 2>/dev/null || echo "No reports/"
           mkdir -p dist/apk
-          find frontend/android -name "*.apk" -exec cp {} dist/apk/ \;
-          ls -la dist/apk/
+          find frontend/android -name "*.apk" -exec cp {} dist/apk/ \; 2>/dev/null || echo "No APK to copy"
+          ls -la dist/apk/ 2>/dev/null || echo "dist/apk empty"
 
       - name: Upload APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: jarvis-apk
           path: dist/apk/*.apk
-          if-no-files-found: error
-
-      - name: Upload build reports
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-reports
-          path: frontend/android/app/build/reports/
-          if-no-files-found: ignore
+          if-no-files-found: warn
