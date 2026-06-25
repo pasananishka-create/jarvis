@@ -9,7 +9,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico"],
+      includeAssets: ["favicon.ico", "icon-192.png", "icon-512.png"],
       manifest: {
         name: "J.A.R.V.I.S. - AI Assistant",
         short_name: "Jarvis",
