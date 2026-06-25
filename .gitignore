@@ -18,6 +18,10 @@ frontend/node_modules/
 frontend/dist/
 npm-debug.log*
 
+# Build artifacts
+*.tsbuildinfo
+frontend/*.tsbuildinfo
+
 # IDE
 .vscode/
 .idea/
