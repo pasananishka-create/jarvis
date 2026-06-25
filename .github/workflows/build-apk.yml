@@ -40,64 +40,26 @@ jobs:
       - name: Install SDK
         run: |
           SDK_ROOT=$ANDROID_SDK_ROOT
-          echo "SDK_ROOT=$SDK_ROOT"
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          ls -la $SDK_ROOT/
-          find $SDK_ROOT -name "sdkmanager" 2>/dev/null
+          yes | $SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$SDK_ROOT "platforms;android-36" "build-tools;36.0.0" 2>&1
 
-      - name: Sync
-        run: npx cap sync android
+      - name: Recreate Android project
+        run: |
+          cd frontend
+          rm -rf android
+          npx cap add android 2>&1
         working-directory: frontend
 
-      - name: Build
+      - name: Build APK
         run: |
-          set +e
           cd frontend/android
           chmod +x gradlew
           export ANDROID_HOME=$ANDROID_SDK_ROOT
-          ./gradlew assembleDebug --no-daemon --stacktrace --info > /tmp/gradle.log 2>&1
-          RC=$?
-          echo "GRADLE_EXIT=$RC" >> $GITHUB_ENV
-          echo "Gradle exit code: $RC"
-          exit $RC
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
         shell: bash
-        continue-on-error: true
-
-      - name: Debug build output
-        run: |
-          {
-            echo "=== Gradle exit code: ${GRADLE_EXIT:-unknown} ==="
-            echo "=== Gradle log ==="
-            if [ -f /tmp/gradle.log ]; then
-              cat /tmp/gradle.log
-            else
-              echo "No gradle.log found!"
-            fi
-            echo "=== Find APKs ==="
-            find / -name "*.apk" 2>/dev/null | head -20 || echo "No APKs found"
-            echo "=== Build outputs ==="
-            ls -la frontend/android/app/build/outputs/ 2>/dev/null || echo "No outputs"
-            ls -la frontend/android/app/build/outputs/apk/debug/ 2>/dev/null || echo "No debug apk dir"
-            echo "=== App build dir ==="
-            find frontend/android/app/build -type d -maxdepth 5 2>/dev/null
-            echo "=== End ==="
-          } > /tmp/full-debug.log 2>&1
-          cat /tmp/full-debug.log
-        shell: bash
-
-      - name: Upload logs
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: build-logs
-          path: |
-            /tmp/gradle.log
-            /tmp/full-debug.log
-          if-no-files-found: warn
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: jarvis-apk
           path: frontend/android/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: warn
+          if-no-files-found: error
