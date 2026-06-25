@@ -51,23 +51,32 @@ jobs:
 
       - name: Build
         run: |
+          set +e
           cd frontend/android
           chmod +x gradlew
           export ANDROID_HOME=$ANDROID_SDK_ROOT
           ./gradlew assembleDebug --no-daemon --stacktrace --info > /tmp/gradle.log 2>&1
-          echo "GRADLE_EXIT=$?" >> $GITHUB_ENV
+          RC=$?
+          echo "GRADLE_EXIT=$RC" >> $GITHUB_ENV
+          echo "Gradle exit code: $RC"
+          exit $RC
         shell: bash
         continue-on-error: true
 
       - name: Debug build output
         run: |
-          echo "=== Gradle exit code: ${{ env.GRADLE_EXIT }} ==="
-          echo "=== Last 100 lines of Gradle log ==="
-          tail -100 /tmp/gradle.log
+          echo "=== Gradle exit code: ${GRADLE_EXIT:-unknown} ==="
+          echo "=== Gradle log ==="
+          if [ -f /tmp/gradle.log ]; then
+            tail -200 /tmp/gradle.log
+          else
+            echo "No gradle.log found!"
+          fi
           echo "=== Find APKs ==="
-          find / -name "app-debug.apk" -o -name "*.apk" 2>/dev/null | head -20
-          echo "=== Build dir ==="
-          ls -la frontend/android/app/build/outputs/ 2>/dev/null || echo "No outputs dir"
+          find / -name "*.apk" 2>/dev/null | head -20 || echo "No APKs found"
+          echo "=== Build outputs ==="
+          ls -la frontend/android/app/build/outputs/ 2>/dev/null || echo "No outputs"
+          ls -la frontend/android/app/build/outputs/apk/debug/ 2>/dev/null || echo "No debug apk dir"
         shell: bash
 
       - name: Upload Gradle log
