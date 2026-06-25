@@ -99,6 +99,49 @@ class AnthropicBackend(AIBackend):
         return result
 
 
+class NvidiaBackend(AIBackend):
+    def __init__(self):
+        from openai import OpenAI
+        self.client = OpenAI(
+            base_url=Config.NVIDIA_BASE_URL,
+            api_key=Config.NVIDIA_API_KEY,
+        )
+
+    @property
+    def name(self):
+        return f"nvidia ({Config.NVIDIA_MODEL})"
+
+    def chat(self, messages, tools=None):
+        kwargs = dict(model=Config.NVIDIA_MODEL, messages=messages)
+        if tools:
+            simplified = []
+            for t in tools:
+                fn = t["function"]
+                simplified.append({
+                    "type": "function",
+                    "function": {
+                        "name": fn["name"],
+                        "description": fn.get("description", ""),
+                        "parameters": fn["parameters"],
+                    },
+                })
+            kwargs["tools"] = simplified
+            kwargs["tool_choice"] = "auto"
+
+        resp = self.client.chat.completions.create(**kwargs)
+        msg = resp.choices[0].message
+        result = {"role": "assistant", "content": msg.content or ""}
+        if msg.tool_calls:
+            result["tool_calls"] = [
+                {
+                    "id": tc.id,
+                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                }
+                for tc in msg.tool_calls
+            ]
+        return result
+
+
 class OllamaBackend(AIBackend):
     def __init__(self):
         from openai import OpenAI
@@ -153,10 +196,14 @@ class Brain:
             self.backends["openai"] = OpenAIBackend()
         if Config.ANTHROPIC_API_KEY:
             self.backends["anthropic"] = AnthropicBackend()
+        if Config.NVIDIA_API_KEY:
+            self.backends["nvidia"] = NvidiaBackend()
         self.backends["ollama"] = OllamaBackend()
 
         if "openai" in self.backends:
             self._active = "openai"
+        elif "nvidia" in self.backends:
+            self._active = "nvidia"
         elif "anthropic" in self.backends:
             self._active = "anthropic"
         else:
