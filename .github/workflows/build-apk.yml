@@ -61,6 +61,11 @@ jobs:
           cat local.properties
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee ../build.log
           echo "EXIT_CODE=$?"
+          cd ..
+          echo "--- Searching for APKs ---"
+          find . -name "*.apk" -type f 2>/dev/null || true
+          find ./android -name "*.apk" -type f 2>/dev/null || true
+          ls -la android/app/build/outputs/apk/debug/ 2>/dev/null || echo "No debug APK dir"
         working-directory: frontend
 
       - name: Upload build log
@@ -75,5 +80,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jarvis-apk
-          path: frontend/android/app/build/outputs/apk/debug/*.apk
+          path: frontend/android/**/*.apk
           if-no-files-found: warn
