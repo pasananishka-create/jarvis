@@ -21,7 +21,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend deps
-        run: npm ci && npx cap --version
+        run: npm ci
         working-directory: frontend
 
       - name: Build frontend
@@ -37,48 +37,45 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Debug environment
+      - name: Install SDK components
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          echo "JAVA_HOME=$JAVA_HOME"
-          java -version
-          ls -la $ANDROID_SDK_ROOT/platforms/ 2>/dev/null || echo "No platforms dir"
-          ls -la $ANDROID_SDK_ROOT/build-tools/ 2>/dev/null || echo "No build-tools dir"
-
-      - name: Install SDK platforms
-        run: |
-          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --list --sdk_root=$ANDROID_SDK_ROOT 2>&1 | head -20
-          echo "--- Installing ---"
           $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platforms;android-36" "build-tools;36.0.0" 2>&1
 
-      - name: Build
+      - name: Build APK
         run: |
+          set -e
           chmod +x android/gradlew
-          npx cap sync android 2>&1
+          npx cap sync android
           cd android
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-          cat local.properties
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee ../build.log
-          echo "EXIT_CODE=$?"
-          cd ..
-          echo "--- Searching for APKs ---"
-          find . -name "*.apk" -type f 2>/dev/null || true
-          find ./android -name "*.apk" -type f 2>/dev/null || true
-          ls -la android/app/build/outputs/apk/debug/ 2>/dev/null || echo "No debug APK dir"
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
+          echo "=== BUILD DONE ==="
         working-directory: frontend
 
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: frontend/build.log
-          if-no-files-found: warn
+      - name: Package outputs
+        run: |
+          echo "=== Directory structure ==="
+          find frontend/android -name "*.apk" -o -name "*.aab" 2>/dev/null || echo "No APK/AAB found"
+          echo "=== Debug output ==="
+          ls -la frontend/android/app/build/outputs/ 2>/dev/null || echo "No outputs/"
+          ls -la frontend/android/app/build/outputs/apk/ 2>/dev/null || echo "No apk/"
+          ls -la frontend/android/app/build/outputs/apk/debug/ 2>/dev/null || echo "No debug/"
+          echo "=== Creating output ==="
+          mkdir -p dist/apk
+          find frontend/android -name "*.apk" -exec cp {} dist/apk/ \;
+          ls -la dist/apk/
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: jarvis-apk
-          path: frontend/android/**/*.apk
-          if-no-files-found: warn
+          path: dist/apk/*.apk
+          if-no-files-found: error
+
+      - name: Upload build reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-reports
+          path: frontend/android/app/build/reports/
+          if-no-files-found: ignore
