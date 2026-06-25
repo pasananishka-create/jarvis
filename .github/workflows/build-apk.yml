@@ -8,8 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: mingc/android-build-box:latest
 
     steps:
       - name: Checkout code
@@ -30,17 +28,55 @@ jobs:
         run: npm run build
         working-directory: frontend
 
-      - name: Sync Capacitor
-        run: npx cap sync android 2>&1
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK
+        run: |
+          SDK_ROOT=$ANDROID_SDK_ROOT
+          echo "SDK_ROOT=$SDK_ROOT"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls -la $SDK_ROOT/
+          find $SDK_ROOT -name "sdkmanager" 2>/dev/null
+
+      - name: Sync
+        run: npx cap sync android
         working-directory: frontend
 
-      - name: Build APK
+      - name: Build
         run: |
           cd frontend/android
           chmod +x gradlew
-          export ANDROID_HOME=/opt/android-sdk
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
+          export ANDROID_HOME=$ANDROID_SDK_ROOT
+          ./gradlew assembleDebug --no-daemon --stacktrace --info > /tmp/gradle.log 2>&1
+          echo "GRADLE_EXIT=$?" >> $GITHUB_ENV
         shell: bash
+        continue-on-error: true
+
+      - name: Debug build output
+        run: |
+          echo "=== Gradle exit code: ${{ env.GRADLE_EXIT }} ==="
+          echo "=== Last 100 lines of Gradle log ==="
+          tail -100 /tmp/gradle.log
+          echo "=== Find APKs ==="
+          find / -name "app-debug.apk" -o -name "*.apk" 2>/dev/null | head -20
+          echo "=== Build dir ==="
+          ls -la frontend/android/app/build/outputs/ 2>/dev/null || echo "No outputs dir"
+        shell: bash
+
+      - name: Upload Gradle log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gradle-log
+          path: /tmp/gradle.log
+          if-no-files-found: warn
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
