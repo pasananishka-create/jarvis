@@ -7,53 +7,50 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install frontend deps
-        run: npm ci
+      - name: Install & build frontend
+        run: |
+          npm ci
+          npm run build
+          npx cap sync android
         working-directory: frontend
 
-      - name: Build frontend
-        run: npm run build
-        working-directory: frontend
-
-      - name: Setup Java 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
           java-version: "17"
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install SDK
         run: |
-          SDK_ROOT=$ANDROID_SDK_ROOT
-          yes | $SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$SDK_ROOT "platforms;android-36" "build-tools;36.0.0" 2>&1
-
-      - name: Recreate Android project
-        run: |
-          cd frontend
-          rm -rf android
-          npx cap add android 2>&1
-        working-directory: frontend
+          cd /tmp
+          curl -sLO https://github.com/google/android-commandlinetools/releases/download/11076708_latest/android-commandlinetools-linux-11076708_latest.zip
+          unzip -q android-commandlinetools-linux-*.zip -d android-cmd
+          mkdir -p $HOME/android/cmdline-tools
+          mv android-cmd/cmdline-tools $HOME/android/cmdline-tools/latest
+          echo "ANDROID_HOME=$HOME/android" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$HOME/android" >> $GITHUB_ENV
+          echo "$HOME/android/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          yes | $HOME/android/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/android "platforms;android-36" "build-tools;36.0.0" 2>&1
+          echo "SDK setup done"
 
       - name: Build APK
         run: |
           cd frontend/android
           chmod +x gradlew
-          export ANDROID_HOME=$ANDROID_SDK_ROOT
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
         shell: bash
 
