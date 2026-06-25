@@ -13,9 +13,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Make gradlew executable
-        run: chmod +x frontend/android/gradlew
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -42,32 +39,22 @@ jobs:
 
       - name: Install required SDK components
         run: |
-          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --install "platforms;android-36" "build-tools;36.0.0" 2>&1 || true
-          echo "SDK installed"
+          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --install "platforms;android-36" "build-tools;36.0.0" 2>&1 || echo "SDK install done"
 
-      - name: Sync Capacitor
-        run: npx cap sync android
-        working-directory: frontend
-
-      - name: Build APK
+      - name: Sync and Build APK
         run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1
-        working-directory: frontend/android
-        continue-on-error: true
+          cd frontend
+          chmod +x android/gradlew
+          npx cap sync android
+          cd android
+          ./gradlew assembleDebug --no-daemon 2>&1
+          echo "--- Checking APK ---"
+          find . -name "*.apk" -type f 2>/dev/null || echo "No APK found"
+          echo "--- Done ---"
 
-      - name: Upload APK (if built)
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: jarvis-apk
           path: frontend/android/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: warn
-
-      - name: Upload build logs (even on failure)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-logs
-          path: |
-            frontend/android/app/build/reports/
-            frontend/android/.gradle/
-          if-no-files-found: ignore
+          if-no-files-found: error
