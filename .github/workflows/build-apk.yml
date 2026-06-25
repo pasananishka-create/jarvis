@@ -54,11 +54,11 @@ jobs:
 
       - name: Build
         run: |
-          cd frontend
           chmod +x android/gradlew
           npx cap sync android 2>&1
           cd android
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          cat local.properties
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee ../build.log
           echo "EXIT_CODE=$?"
         working-directory: frontend
