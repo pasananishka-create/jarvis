@@ -65,26 +65,34 @@ jobs:
 
       - name: Debug build output
         run: |
-          echo "=== Gradle exit code: ${GRADLE_EXIT:-unknown} ==="
-          echo "=== Gradle log ==="
-          if [ -f /tmp/gradle.log ]; then
-            tail -200 /tmp/gradle.log
-          else
-            echo "No gradle.log found!"
-          fi
-          echo "=== Find APKs ==="
-          find / -name "*.apk" 2>/dev/null | head -20 || echo "No APKs found"
-          echo "=== Build outputs ==="
-          ls -la frontend/android/app/build/outputs/ 2>/dev/null || echo "No outputs"
-          ls -la frontend/android/app/build/outputs/apk/debug/ 2>/dev/null || echo "No debug apk dir"
+          {
+            echo "=== Gradle exit code: ${GRADLE_EXIT:-unknown} ==="
+            echo "=== Gradle log ==="
+            if [ -f /tmp/gradle.log ]; then
+              cat /tmp/gradle.log
+            else
+              echo "No gradle.log found!"
+            fi
+            echo "=== Find APKs ==="
+            find / -name "*.apk" 2>/dev/null | head -20 || echo "No APKs found"
+            echo "=== Build outputs ==="
+            ls -la frontend/android/app/build/outputs/ 2>/dev/null || echo "No outputs"
+            ls -la frontend/android/app/build/outputs/apk/debug/ 2>/dev/null || echo "No debug apk dir"
+            echo "=== App build dir ==="
+            find frontend/android/app/build -type d -maxdepth 5 2>/dev/null
+            echo "=== End ==="
+          } > /tmp/full-debug.log 2>&1
+          cat /tmp/full-debug.log
         shell: bash
 
-      - name: Upload Gradle log
+      - name: Upload logs
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: gradle-log
-          path: /tmp/gradle.log
+          name: build-logs
+          path: |
+            /tmp/gradle.log
+            /tmp/full-debug.log
           if-no-files-found: warn
 
       - name: Upload APK
