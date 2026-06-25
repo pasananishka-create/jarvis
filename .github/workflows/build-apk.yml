@@ -37,46 +37,54 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Check SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          ls -la $ANDROID_SDK_ROOT/ 2>/dev/null
+          find $ANDROID_SDK_ROOT -name "sdkmanager" -type f 2>/dev/null
+          java -version 2>&1
+          echo "---"
+
       - name: Install SDK components
-        run: yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platforms;android-36" "build-tools;36.0.0" 2>&1
+        run: |
+          SDKMAN=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
+          if [ ! -f "$SDKMAN" ]; then
+            SDKMAN=$ANDROID_SDK_ROOT/cmdline-tools/tools/bin/sdkmanager
+          fi
+          if [ ! -f "$SDKMAN" ]; then
+            SDKMAN=$ANDROID_SDK_ROOT/tools/bin/sdkmanager
+          fi
+          echo "Using sdkmanager: $SDKMAN"
+          yes | $SDKMAN --sdk_root=$ANDROID_SDK_ROOT "platforms;android-36" "build-tools;36.0.0" 2>&1
+          echo "SDK install done"
+
+      - name: Sync Capacitor
+        run: npx cap sync android 2>&1
+        working-directory: frontend
 
       - name: Build APK
         run: |
-          set +e
-          chmod +x android/gradlew
-          npx cap sync android
-          cd android
+          cd frontend/android
           echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee $GITHUB_WORKSPACE/gradle-out.txt
-          exit ${PIPESTATUS[0]}
-        working-directory: frontend
-        continue-on-error: true
+          cat local.properties
+          ./gradlew assembleDebug --no-daemon 2>&1
+        working-directory: ${{ github.workspace }}
 
-      - name: Upload Gradle output
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gradle-output
-          path: gradle-out.txt
-          if-no-files-found: warn
-
-      - name: Check and package APK
-        if: always()
+      - name: Locate APK
         run: |
-          echo "=== FIND APK ==="
-          find frontend/android -name "*.apk" -type f 2>/dev/null || echo "NO APK FOUND"
-          echo "=== BUILD OUTPUT ==="
-          ls -la frontend/android/app/build/outputs/ 2>/dev/null || echo "No outputs/"
-          echo "=== REPORTS ==="
-          ls -la frontend/android/app/build/reports/ 2>/dev/null || echo "No reports/"
-          mkdir -p dist/apk
-          find frontend/android -name "*.apk" -exec cp {} dist/apk/ \; 2>/dev/null || echo "No APK to copy"
-          ls -la dist/apk/ 2>/dev/null || echo "dist/apk empty"
+          echo "=== searching for APKs ==="
+          find / -name "app-debug.apk" -type f 2>/dev/null || echo "NOT FOUND"
+          echo "=== in workspace ==="
+          find ${{ github.workspace }} -name "*.apk" -type f 2>/dev/null || echo "NONE"
+          echo "=== tree check ==="
+          ls -laR ${{ github.workspace }}/frontend/android/app/build/ 2>/dev/null || echo "NO BUILD DIR"
+          echo "=== gradle cache ==="
+          ls $HOME/.gradle/caches/ 2>/dev/null || echo "no gradle cache"
 
       - name: Upload APK
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: jarvis-apk
-          path: dist/apk/*.apk
+          path: ${{ github.workspace }}/frontend/android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: warn
