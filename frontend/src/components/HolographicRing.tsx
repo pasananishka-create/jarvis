@@ -113,10 +113,10 @@ export default function HolographicRing({ active, listening }: HolographicRingPr
   }, [active, listening]);
 
   return (
-    <div className="flex justify-center items-center py-5 sm:py-7 md:py-9">
+    <div className="flex justify-center items-center py-3 sm:py-7 md:py-9">
       <canvas
         ref={canvasRef}
-        className="max-w-[180px] xs:max-w-[200px] sm:max-w-[240px] md:max-w-[300px] w-full h-auto"
+        className="max-w-[140px] sm:max-w-[240px] md:max-w-[300px] w-full h-auto"
         style={{ filter: "drop-shadow(0 0 40px rgba(0,200,255,0.12))" }}
       />
     </div>

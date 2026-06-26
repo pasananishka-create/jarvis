@@ -263,6 +263,36 @@ body {
   }
 }
 
+@supports (padding-top: env(safe-area-inset-top)) {
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+@supports (padding-left: env(safe-area-inset-left)) {
+  .safe-left {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+}
+
+@supports (padding-right: env(safe-area-inset-right)) {
+  .safe-right {
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+}
+
+/* Mobile tap highlight */
+@media (max-width: 639px) {
+  html, body, #root {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  textarea, input, select {
+    font-size: 16px !important;
+  }
+}
+
 /* Header glass effect */
 .header-glass {
   background: linear-gradient(

@@ -32,18 +32,18 @@ function TypingIndicator() {
 
 function StreamingText({ text }: { text: string }) {
   return (
-    <div className="flex justify-start mb-2.5 sm:mb-3.5">
-      <div className="glass-panel rounded-2xl px-3.5 sm:px-4.5 py-2.5 sm:py-3 text-white/85 max-w-[90%] sm:max-w-[82%] md:max-w-[72%]">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-4 h-4 rounded-full bg-jarvis/15 border border-jarvis/25 flex items-center justify-center">
-            <div className="w-1.5 h-1.5 rounded-full bg-jarvis/60" />
+    <div className="flex justify-start mb-2 sm:mb-3.5">
+      <div className="glass-panel rounded-2xl px-3 sm:px-4.5 py-2.5 sm:py-3 text-white/85 max-w-[92%] sm:max-w-[82%] md:max-w-[72%]">
+        <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+          <div className="w-[14px] h-[14px] sm:w-4 sm:h-4 rounded-full bg-jarvis/15 border border-jarvis/25 flex items-center justify-center shrink-0">
+            <div className="w-[5px] h-[5px] sm:w-1.5 sm:h-1.5 rounded-full bg-jarvis/60" />
           </div>
-          <span className="text-[9px] font-semibold tracking-[0.2em] text-jarvis/50 uppercase">Jarvis</span>
+          <span className="text-[8px] sm:text-[9px] font-semibold tracking-[0.2em] text-jarvis/50 uppercase">Jarvis</span>
         </div>
-        <p className="text-[13px] sm:text-sm leading-[1.65] sm:leading-relaxed whitespace-pre-wrap break-words">
+        <p className="text-[14px] sm:text-sm leading-[1.6] sm:leading-relaxed whitespace-pre-wrap break-words">
           {text}
           <motion.span
-            className="inline-block w-[2px] h-[14px] sm:h-4 bg-jarvis/70 ml-0.5 align-text-bottom"
+            className="inline-block w-[2px] h-[15px] sm:h-4 bg-jarvis/70 ml-0.5 align-text-bottom"
             animate={{ opacity: [1, 0] }}
             transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse" }}
           />
@@ -63,13 +63,13 @@ function EmptyState() {
 
   return (
     <motion.div
-      className="flex flex-col items-center justify-center py-8 sm:py-12 px-4"
+      className="flex flex-col items-center justify-center py-6 sm:py-12 px-3 sm:px-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.8, delay: 0.3 }}
     >
       <motion.p
-        className="text-[11px] sm:text-xs font-mono tracking-[0.3em] text-white/20 uppercase mb-8"
+        className="text-[10px] sm:text-xs font-mono tracking-[0.3em] text-white/20 uppercase mb-5 sm:mb-8"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.5 }}
@@ -77,11 +77,11 @@ function EmptyState() {
         How may I assist you?
       </motion.p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-md stagger">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 w-full max-w-md">
         {suggestions.map((s, i) => (
           <motion.button
             key={s}
-            className="text-left glass-panel rounded-xl px-3.5 py-2.5 text-[12px] text-white/40 hover:text-white/70 hover:bg-white/[0.04] transition-all cursor-pointer"
+            className="text-left glass-panel rounded-xl px-3 sm:px-3.5 py-2.5 sm:py-2.5 text-[12px] sm:text-[12px] text-white/40 active:text-white/70 hover:text-white/70 hover:bg-white/[0.04] transition-all cursor-pointer active:bg-white/[0.06]"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.7 + i * 0.1, ease: [0.16, 1, 0.3, 1] }}
@@ -95,7 +95,7 @@ function EmptyState() {
   );
 }
 
-export default function Chat() {
+export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }) {
   const { status, backend, sendMessage, sendCommand, onToken, onDone } = useJarvis();
   const [messages, setMessages] = useState<Message[]>([]);
   const [streamingId, setStreamingId] = useState<string | null>(null);
@@ -183,6 +183,7 @@ export default function Chat() {
   return (
     <motion.div
       className="flex flex-col h-full safe-bottom"
+      style={{ paddingBottom: keyboardHeight > 0 ? 0 : undefined }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}

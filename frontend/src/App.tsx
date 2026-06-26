@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence } from "framer-motion";
+import { useVisualViewport } from "./hooks/useVisualViewport";
 import ParticleBackground from "./components/ParticleBackground";
 import Chat from "./components/Chat";
 
@@ -41,9 +42,13 @@ function SplashScreen({ onFinish }: { onFinish: () => void }) {
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
+  const { keyboardHeight } = useVisualViewport();
 
   return (
-    <div className="h-full flex flex-col relative overflow-hidden bg-bg-deep">
+    <div
+      className="h-full flex flex-col relative overflow-hidden bg-bg-deep"
+      style={{ marginBottom: keyboardHeight }}
+    >
       <div className="ambient-glow ambient-glow-1" />
       <div className="ambient-glow ambient-glow-2" />
 
@@ -55,7 +60,7 @@ export default function App() {
         {showSplash && <SplashScreen key="splash" onFinish={() => setShowSplash(false)} />}
       </AnimatePresence>
 
-      {!showSplash && <Chat />}
+      {!showSplash && <Chat keyboardHeight={keyboardHeight} />}
     </div>
   );
 }

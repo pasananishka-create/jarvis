@@ -56,18 +56,18 @@ export default function Header({ status, backendInfo, onClear, onSwitchBackend }
 
   return (
     <motion.header
-      className="relative z-10 header-glass"
+      className="relative z-10 header-glass safe-top"
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
     >
-      <div className="max-w-4xl mx-auto px-3 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between min-h-[52px] sm:min-h-[60px]">
-        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+      <div className="max-w-4xl mx-auto px-2 sm:px-5 py-2 sm:py-3 flex items-center justify-between min-h-[44px] sm:min-h-[60px]">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <StatusDot status={status} />
           <div className="min-w-0">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5 sm:gap-2.5">
               <motion.h1
-                className="text-xs sm:text-sm font-bold tracking-[0.25em] sm:tracking-[0.3em] text-jarvis text-glow uppercase"
+                className="text-[10px] sm:text-sm font-bold tracking-[0.2em] sm:tracking-[0.3em] text-jarvis text-glow uppercase"
                 animate={{ opacity: [0.8, 1, 0.8] }}
                 transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
               >
@@ -75,28 +75,28 @@ export default function Header({ status, backendInfo, onClear, onSwitchBackend }
               </motion.h1>
               <LiveTime />
             </div>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-1.5 sm:gap-2 mt-0">
               <motion.span
-                className="text-[9px] sm:text-[10px] font-mono tracking-wider"
+                className="text-[8px] sm:text-[10px] font-mono tracking-wider"
                 style={{ color: status === "connected" ? "rgba(74, 222, 128, 0.5)" : "rgba(248, 113, 113, 0.5)" }}
                 layout
               >
                 {statusLabel}
               </motion.span>
-              <span className="text-white/15 text-[9px]">|</span>
+              <span className="text-white/15 text-[8px] sm:text-[9px]">|</span>
               <motion.span
-                className="text-[9px] sm:text-[10px] text-white/35 font-mono truncate max-w-[120px] sm:max-w-[200px]"
+                className="text-[8px] sm:text-[10px] text-white/35 font-mono truncate max-w-[80px] sm:max-w-[200px]"
                 key={backendInfo?.active}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
               >
-                {backendInfo?.active ?? "initializing..."}
+                {backendInfo?.active ?? "init..."}
               </motion.span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
           {backendInfo && backendInfo.available.length > 1 && (
             <div className="relative">
               <motion.select
@@ -104,15 +104,15 @@ export default function Header({ status, backendInfo, onClear, onSwitchBackend }
                 onChange={(e) => { onSwitchBackend(e.target.value); setMenuOpen(false); }}
                 onFocus={() => setMenuOpen(true)}
                 onBlur={() => setMenuOpen(false)}
-                className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 sm:px-2.5 py-1.5 text-[10px] sm:text-xs text-white/50 focus:outline-none focus:border-jarvis/30 appearance-none cursor-pointer hover:bg-white/[0.06] transition-colors max-w-[85px] sm:max-w-[110px] font-mono tracking-wider"
+                className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-1.5 sm:px-2.5 py-1 sm:py-1.5 text-[9px] sm:text-xs text-white/50 focus:outline-none focus:border-jarvis/30 appearance-none cursor-pointer hover:bg-white/[0.06] transition-colors max-w-[70px] sm:max-w-[110px] font-mono tracking-wider"
                 whileHover={{ borderColor: "rgba(0, 212, 255, 0.25)" }}
               >
                 {backendInfo.available.map((b) => (
                   <option key={b} value={b} className="bg-bg-dark text-white/70">{b}</option>
                 ))}
               </motion.select>
-              <div className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                <svg className="w-2.5 h-2.5 text-white/25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg className="w-2 h-2.5 text-white/25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
@@ -126,7 +126,7 @@ export default function Header({ status, backendInfo, onClear, onSwitchBackend }
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
           </motion.button>
