@@ -141,12 +141,19 @@ export default function Header({ status, backendInfo, models, onClear, onSwitchM
                   onClick={() => setModelOpen(false)}
                 />
                 <motion.div
-                  className="fixed sm:absolute z-50 sm:z-50 left-0 sm:left-auto right-0 sm:right-0 bottom-0 sm:top-full sm:mt-1 sm:mb-0 sm:min-w-[280px] bg-[#080C10] sm:border sm:border-white/[0.06] rounded-t-xl sm:rounded-lg shadow-xl sm:max-h-[60vh] overflow-y-auto"
+                  className="fixed sm:absolute inset-0 sm:inset-auto z-50 flex sm:block items-end sm:items-start justify-center sm:right-0 sm:top-full sm:mt-1 sm:min-w-[280px]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                <motion.div
+                  className="w-full sm:max-w-none max-w-sm max-h-[70vh] bg-[#080C10] sm:border sm:border-white/[0.06] rounded-t-xl sm:rounded-lg shadow-xl overflow-y-auto sm:max-h-[60vh]"
                   initial={{ y: 200, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: 200, opacity: 0 }}
                   transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ maxHeight: "70vh", paddingBottom: "env(safe-area-inset-bottom, 16px)" }}
+                  style={{ paddingBottom: "env(safe-area-inset-bottom, 16px)" }}
                 >
                   {/* Header */}
                   <div className="sticky top-0 bg-[#080C10] z-10 flex items-center justify-between px-4 py-3 border-b border-white/[0.04]">
@@ -205,6 +212,7 @@ export default function Header({ status, backendInfo, models, onClear, onSwitchM
                     })
                   )}
                   <div className="sm:hidden h-4" />
+                </motion.div>
                 </motion.div>
               </>
             )}
