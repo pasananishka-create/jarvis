@@ -22,40 +22,40 @@ class AIBackend(ABC):
     def chat_with_fallback(self, messages: list[dict], tools: Optional[list[dict]] = None) -> dict:
         models_to_try = self.fallback_models or [self._current_model]
         last_error = None
+
+        # Try one model with tools (most capable first)
+        if tools and models_to_try:
+            model = models_to_try[0]
+            try:
+                self._current_model = model
+                logger.info("Trying %s with model %s (with tools)", self.__class__.__name__, model)
+                return self.chat(messages, tools)
+            except Exception as e:
+                logger.warning("Model %s with tools failed: %s", model, e)
+                last_error = e
+
+        # Retry text-only — strip tool history so model doesn't continue tool pattern.
+        text_messages = []
+        for m in messages:
+            if m["role"] in ("tool",):
+                continue
+            if m["role"] == "system":
+                text_messages.append({
+                    "role": "system",
+                    "content": "You are Jarvis, a helpful AI assistant. Answer concisely in plain text. Do NOT use any functions, tools, or special formatting.",
+                })
+            else:
+                entry = dict(m)
+                entry.pop("tool_calls", None)
+                text_messages.append(entry)
         for model in models_to_try:
             try:
                 self._current_model = model
-                logger.info("Trying %s with model %s", self.__class__.__name__, model)
-                return self.chat(messages, tools)
+                logger.info("Trying %s with model %s (text-only)", self.__class__.__name__, model)
+                return self.chat(text_messages, tools=None)
             except Exception as e:
+                logger.warning("Model %s (text-only) failed: %s", model, e)
                 last_error = e
-                logger.warning("Model %s failed: %s", model, e)
-                continue
-        # NVIDIA models sometimes emit tool calls in an incompatible format.
-        # Retry forcing text-only — strip tool history so model doesn't continue tool pattern.
-        if tools:
-            logger.info("All models failed with tools, retrying text-only")
-            text_messages = []
-            for m in messages:
-                if m["role"] in ("tool",):
-                    continue
-                if m["role"] == "system":
-                    text_messages.append({
-                        "role": "system",
-                        "content": "You are Jarvis, a helpful AI assistant. Answer concisely in plain text. Do NOT use any functions, tools, or special formatting.",
-                    })
-                else:
-                    entry = dict(m)
-                    entry.pop("tool_calls", None)
-                    text_messages.append(entry)
-            for model in models_to_try:
-                try:
-                    self._current_model = model
-                    return self.chat(text_messages, tools=None)
-                except Exception as e:
-                    logger.warning("Model %s (text-only) failed: %s", model, e)
-                    last_error = e
-                    continue
         raise last_error or RuntimeError(f"{self.__class__.__name__}: all models exhausted")
 
 
@@ -156,6 +156,35 @@ class AnthropicBackend(AIBackend):
 
 class NvidiaBackend(AIBackend):
     fallback_models = Config.NVIDIA_FALLBACK_MODELS
+
+    def chat_with_fallback(self, messages: list[dict], tools: Optional[list[dict]] = None) -> dict:
+        # NVIDIA models emit tool calls in an incompatible format (missing "type" field).
+        # Skip tools entirely and go straight to text-only.
+        text_messages = []
+        for m in messages:
+            if m["role"] in ("tool",):
+                continue
+            if m["role"] == "system":
+                text_messages.append({
+                    "role": "system",
+                    "content": "You are Jarvis, a helpful AI assistant. Answer concisely in plain text. Do NOT use any functions, tools, or special formatting.",
+                })
+            else:
+                entry = dict(m)
+                entry.pop("tool_calls", None)
+                text_messages.append(entry)
+        models_to_try = self.fallback_models or [self._current_model]
+        last_error = None
+        for model in models_to_try:
+            try:
+                self._current_model = model
+                logger.info("NVIDIA text-only with model %s", model)
+                return self.chat(text_messages, tools=None)
+            except Exception as e:
+                logger.warning("NVIDIA %s failed: %s", model, e)
+                last_error = e
+                continue
+        raise last_error or RuntimeError(f"{self.__class__.__name__}: all models exhausted")
 
     def __init__(self):
         import httpx

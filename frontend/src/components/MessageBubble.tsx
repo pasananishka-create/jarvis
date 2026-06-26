@@ -21,12 +21,12 @@ export default function MessageBubble({ message, index }: MessageBubbleProps) {
       }}
     >
       <motion.div
-        className={`rounded-2xl px-3 sm:px-4.5 py-2.5 sm:py-3 hud-corner ${
+        className={`rounded-2xl px-3 sm:px-4.5 py-2.5 sm:py-3 hud-corner msg-scan ${
           isUser
             ? "bg-jarvis/8 border border-jarvis/20 text-white/90 max-w-[85%] sm:max-w-[72%] md:max-w-[62%]"
             : "glass-panel text-white/85 max-w-[92%] sm:max-w-[82%] md:max-w-[72%]"
         }`}
-        whileHover={{ borderColor: isUser ? "rgba(0, 212, 255, 0.3)" : "rgba(0, 212, 255, 0.12)" }}
+        whileHover={{ borderColor: isUser ? "rgba(0, 212, 255, 0.35)" : "rgba(0, 212, 255, 0.15)", boxShadow: isUser ? "0 0 20px rgba(0,212,255,0.06)" : "0 0 12px rgba(0,212,255,0.03)" }}
         transition={{ duration: 0.2 }}
       >
         {!isUser && (

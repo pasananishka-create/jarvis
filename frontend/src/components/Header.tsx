@@ -113,7 +113,10 @@ export default function Header({ status, backendInfo, onClear, onSwitchBackend }
             <div className="flex items-center gap-1.5 sm:gap-2 mt-0">
               <motion.span
                 className="text-[8px] sm:text-[10px] font-mono tracking-wider"
-                style={{ color: status === "connected" ? "rgba(74, 222, 128, 0.5)" : "rgba(248, 113, 113, 0.5)" }}
+                style={{
+                  color: status === "connected" ? "rgba(74, 222, 128, 0.6)" : "rgba(248, 113, 113, 0.6)",
+                  textShadow: status === "connected" ? "0 0 8px rgba(74, 222, 128, 0.2)" : "0 0 8px rgba(248, 113, 113, 0.2)",
+                }}
                 layout
               >
                 {statusLabel}

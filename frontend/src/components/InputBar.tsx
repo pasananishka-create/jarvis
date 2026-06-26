@@ -51,15 +51,12 @@ export default function InputBar({ onSend, disabled }: InputBarProps) {
     >
       <div className="max-w-4xl mx-auto px-2 sm:px-5 py-2 sm:py-3.5 flex gap-1.5 sm:gap-3 items-end">
         <div className="flex-1 relative">
-          <motion.div
-            className="absolute inset-0 rounded-xl pointer-events-none"
-            animate={{
-              boxShadow: focused
-                ? "0 0 20px rgba(0, 212, 255, 0.08), inset 0 0 20px rgba(0, 212, 255, 0.03)"
-                : "0 0 0px rgba(0, 212, 255, 0)",
-            }}
-            transition={{ duration: 0.3 }}
-          />
+          {focused && (
+            <>
+              <div className="absolute -inset-[2px] rounded-xl opacity-40 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(0,212,255,0.2), transparent 30%, transparent 70%, rgba(0,212,255,0.1))", animation: "energyBorder 2s ease-in-out infinite" }} />
+              <div className="absolute -inset-[1px] rounded-xl opacity-20 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(0,100,255,0.15), transparent 50%)", filter: "blur(8px)" }} />
+            </>
+          )}
           <textarea
             ref={textareaRef}
             value={text}
@@ -70,14 +67,14 @@ export default function InputBar({ onSend, disabled }: InputBarProps) {
             onKeyDown={handleKeyDown}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
-            placeholder="Message Jarvis..."
+            placeholder="╰▸ Message Jarvis..."
             disabled={disabled}
             rows={1}
             inputMode="text"
             enterKeyHint="send"
             className={`w-full bg-white/[0.04] border rounded-xl px-3 sm:px-4 py-3 sm:py-3 pr-10 text-[15px] sm:text-sm text-white/85 placeholder-white/15 focus:outline-none transition-all duration-300 disabled:opacity-30 resize-none overflow-y-auto max-h-[120px] sm:max-h-[140px] leading-relaxed font-sans ${
               focused
-                ? "border-jarvis/30 bg-white/[0.06] shadow-[0_0_20px_rgba(0,212,255,0.06)]"
+                ? "border-jarvis/40 bg-white/[0.07] shadow-[0_0_30px_rgba(0,212,255,0.1)]"
                 : "border-white/[0.06] hover:border-white/[0.1]"
             }`}
           />

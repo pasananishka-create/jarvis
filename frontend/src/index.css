@@ -697,6 +697,108 @@ body {
   }
 }
 
+/* Quantum energy field */
+@keyframes quantumPulse {
+  0% { transform: scale(1); opacity: 0.15; }
+  50% { transform: scale(1.08); opacity: 0.25; }
+  100% { transform: scale(1); opacity: 0.15; }
+}
+
+.quantum-field {
+  position: absolute;
+  inset: -40px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 212, 255, 0.06) 0%, transparent 70%);
+  animation: quantumPulse 3s ease-in-out infinite;
+}
+
+.quantum-field:nth-child(2) {
+  animation-delay: 1s;
+  background: radial-gradient(circle, rgba(0, 212, 255, 0.04) 0%, transparent 60%);
+}
+
+.quantum-field:nth-child(3) {
+  animation-delay: 2s;
+  background: radial-gradient(circle, rgba(0, 100, 255, 0.03) 0%, transparent 50%);
+}
+
+/* Enhanced thinking indicator */
+@keyframes thinkScan {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.think-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  border-top-color: rgba(0, 212, 255, 0.4);
+  animation: thinkScan 1s linear infinite;
+}
+
+.think-ring:nth-child(2) {
+  inset: -12px;
+  animation-duration: 1.8s;
+  animation-direction: reverse;
+  border-top-color: rgba(0, 212, 255, 0.2);
+}
+
+.think-ring:nth-child(3) {
+  inset: -18px;
+  animation-duration: 2.6s;
+  border-top-color: rgba(100, 0, 255, 0.15);
+}
+
+/* Data ripple */
+@keyframes dataRipple {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+.data-ripple {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: 50%;
+  animation: dataRipple 2.5s ease-out infinite;
+}
+
+.data-ripple:nth-child(2) { animation-delay: 0.8s; }
+.data-ripple:nth-child(3) { animation-delay: 1.6s; }
+
+/* Energy border */
+@keyframes energyBorder {
+  0% { border-color: rgba(0, 212, 255, 0.15); box-shadow: 0 0 8px rgba(0, 212, 255, 0.05); }
+  50% { border-color: rgba(0, 212, 255, 0.35); box-shadow: 0 0 25px rgba(0, 212, 255, 0.12); }
+  100% { border-color: rgba(0, 212, 255, 0.15); box-shadow: 0 0 8px rgba(0, 212, 255, 0.05); }
+}
+
+.energy-border {
+  animation: energyBorder 2s ease-in-out infinite;
+}
+
+/* Message scan reveal */
+@keyframes msgReveal {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 0% 100%; }
+}
+
+.msg-scan {
+  position: relative;
+  overflow: hidden;
+}
+
+.msg-scan::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 48%, rgba(0, 212, 255, 0.04) 50%, transparent 52%);
+  background-size: 100% 200%;
+  animation: msgReveal 0.6s ease forwards;
+  pointer-events: none;
+}
+
 /* Header glass effect */
 .header-glass {
   background: linear-gradient(

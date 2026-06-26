@@ -18,7 +18,10 @@ function TypingIndicator() {
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="glass-panel rounded-2xl px-4 py-3.5 flex items-center gap-1.5">
+      <div className="relative glass-panel rounded-2xl px-5 py-4 flex items-center gap-1.5">
+        <div className="think-ring" />
+        <div className="think-ring" />
+        <div className="think-ring" />
         {[0, 1, 2].map((i) => (
           <motion.div
             key={i}
@@ -35,12 +38,14 @@ function TypingIndicator() {
 function StreamingText({ text }: { text: string }) {
   return (
     <div className="flex justify-start mb-2 sm:mb-3.5">
-      <div className="glass-panel rounded-2xl px-3 sm:px-4.5 py-2.5 sm:py-3 text-white/85 max-w-[92%] sm:max-w-[82%] md:max-w-[72%] hud-corner">
+      <div className="relative glass-panel rounded-2xl px-3 sm:px-4.5 py-2.5 sm:py-3 text-white/85 max-w-[92%] sm:max-w-[82%] md:max-w-[72%] hud-corner">
+        <div className="think-ring" />
+        <div className="think-ring" />
         <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
           <div className="w-[14px] h-[14px] sm:w-4 sm:h-4 rounded-full bg-jarvis/15 border border-jarvis/25 flex items-center justify-center shrink-0">
             <div className="w-[5px] h-[5px] sm:w-1.5 sm:h-1.5 rounded-full bg-jarvis/60" />
           </div>
-          <span className="text-[8px] sm:text-[9px] font-semibold tracking-[0.2em] text-jarvis/50 uppercase">Jarvis</span>
+          <span className="text-[8px] sm:text-[9px] font-semibold tracking-[0.2em] text-jarvis/50 uppercase">Jarvis · Processing</span>
         </div>
         <p className="text-[14px] sm:text-sm leading-[1.6] sm:leading-relaxed whitespace-pre-wrap break-words">
           {text}
@@ -229,7 +234,12 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
           <div className="max-w-4xl mx-auto">
             {!hasMessages ? (
               <>
-                <div className="py-4 sm:py-6">
+                <div className="relative py-6 sm:py-8">
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 sm:w-64 sm:h-64">
+                    <div className="quantum-field" />
+                    <div className="quantum-field" />
+                    <div className="quantum-field" />
+                  </div>
                   <AvatarDisplay
                     active={status === "connected"}
                     listening={thinking}
@@ -239,7 +249,14 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
               </>
             ) : (
               <>
-                <div className="py-2 sm:py-3">
+                <div className="relative py-2 sm:py-3">
+                  {thinking && (
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32">
+                      <div className="data-ripple" />
+                      <div className="data-ripple" />
+                      <div className="data-ripple" />
+                    </div>
+                  )}
                   <AvatarDisplay
                     active={status === "connected"}
                     listening={thinking}
