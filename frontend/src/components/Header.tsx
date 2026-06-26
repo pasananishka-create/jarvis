@@ -16,7 +16,7 @@ function StatusDot({ status }: { status: ConnectionStatus }) {
   const on = status === "connected";
   return (
     <motion.div
-      className="rounded-full shrink-0 gpu-layer"
+      className="rounded-full shrink-0"
       style={{
         width: 6,
         height: 6,
@@ -31,23 +31,19 @@ function StatusDot({ status }: { status: ConnectionStatus }) {
 function useSessionTimer() {
   const [elapsed, setElapsed] = useState("00:00");
   const startRef = useRef(Date.now());
-
   useEffect(() => {
     const tick = () => {
       const s = Math.floor((Date.now() - startRef.current) / 1000);
-      const m = String(Math.floor(s / 60)).padStart(2, "0");
-      const sec = String(s % 60).padStart(2, "0");
-      setElapsed(`${m}:${sec}`);
+      setElapsed(`${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`);
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
-
   return elapsed;
 }
 
-export default function Header({ status, backendInfo, models, onClear, onSwitchBackend, onSwitchModel }: HeaderProps) {
+export default function Header({ status, backendInfo, models, onClear, onSwitchModel }: HeaderProps) {
   const [modelOpen, setModelOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
   const [modelLoading, setModelLoading] = useState(false);
@@ -79,10 +75,12 @@ export default function Header({ status, backendInfo, models, onClear, onSwitchB
     setTimeout(() => setModelLoading(false), 1500);
   }, [onSwitchModel]);
 
+  const modelCount = Object.values(models).reduce((sum, m) => sum + m.length, 0);
+
   return (
-    <header className="border-b border-white/[0.04] bg-black/80 safe-top gpu-layer" style={{ minHeight: 44 }}>
-      <div className="max-w-3xl mx-auto px-3 sm:px-6 flex items-center justify-between" style={{ height: 44 }}>
-        {/* Left: status dot + name */}
+    <header className="border-b border-white/[0.04] bg-black/80 safe-top">
+      <div className="max-w-3xl mx-auto px-3 sm:px-6 flex items-center justify-between h-11">
+        {/* Left */}
         <div className="flex items-center gap-2.5 min-w-0">
           <StatusDot status={status} />
           <span className={`text-[9px] font-mono tracking-[0.2em] ${
@@ -92,20 +90,18 @@ export default function Header({ status, backendInfo, models, onClear, onSwitchB
           </span>
           <span className="text-white/[0.04]">|</span>
           <span className="text-[8px] font-mono text-white/12 truncate max-w-[80px] sm:max-w-[160px]">
-            {currentModel || currentBackend}
+            {currentModel || currentBackend || "no backend"}
           </span>
         </div>
 
-        {/* Right: session timer + actions */}
-        <div className="flex items-center gap-1" ref={panelRef}>
-          <span className="text-[8px] font-mono text-white/12 tabular-nums mr-1">
-            {elapsed}
-          </span>
+        {/* Right */}
+        <div className="relative flex items-center gap-1" ref={panelRef}>
+          <span className="text-[8px] font-mono text-white/12 tabular-nums mr-1">{elapsed}</span>
 
           <button
             onClick={() => { setModelOpen((o) => !o); setThemeOpen(false); }}
-            className="text-white/25 hover:text-white/45 px-2 py-2 rounded-lg text-[8px] font-mono tracking-wider border border-white/[0.04] hover:border-[#00D4FF]/15 transition-all min-h-[44px] flex items-center justify-center"
-            title="Models"
+            className="text-white/25 hover:text-white/45 px-2 py-2 rounded-lg border border-white/[0.04] hover:border-[#00D4FF]/15 transition-all min-h-[44px] flex items-center justify-center"
+            title={`Models (${modelCount})`}
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -132,85 +128,132 @@ export default function Header({ status, backendInfo, models, onClear, onSwitchB
             </svg>
           </button>
 
-          {/* Model dropdown */}
+          {/* Model overlay — full screen on mobile, dropdown on desktop */}
           <AnimatePresence>
             {modelOpen && (
-              <motion.div
-                className="fixed sm:absolute right-0 sm:right-auto left-0 sm:left-auto top-auto sm:top-full bottom-0 sm:bottom-auto mt-0 sm:mt-1 bg-[#080C10] border-t sm:border border-white/[0.06] rounded-t-xl sm:rounded-lg py-2 z-50 shadow-xl max-h-[50vh] sm:max-h-[60vh] overflow-y-auto gpu-layer"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                transition={{ duration: 0.2 }}
-                style={{ width: "100%", maxWidth: 340, margin: "0 auto" }}
-              >
-                <div className="flex items-center justify-between px-4 sm:px-3 py-2.5 border-b border-white/[0.04] sm:hidden">
-                  <span className="text-[9px] font-mono tracking-[0.15em] text-white/30">Select Model</span>
-                  <button onClick={() => setModelOpen(false)} className="text-white/30 p-1">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                {available.map((bk) => {
-                  const backendModels = models[bk] || [];
-                  const isActive = bk === currentBackend;
-                  return (
-                    <div key={bk}>
-                      <div className="px-4 sm:px-3 py-2 text-[7px] font-mono tracking-[0.15em] uppercase text-white/20 flex items-center gap-2 border-b border-white/[0.03]">
-                        {isActive && <div className="w-1 h-1 rounded-full bg-[#00D4FF]/50" />}
-                        <span className={isActive ? "text-[#00D4FF]/40" : ""}>{bk}</span>
-                      </div>
-                      {backendModels.slice(0, 50).map((m) => {
-                        const isSelected = isActive && m.id === currentModel;
-                        return (
-                          <button
-                            key={m.id}
-                            onClick={() => handleModelClick(bk, m.id)}
-                            disabled={modelLoading}
-                            className={`w-full text-left px-4 sm:px-3 py-3 sm:py-2.5 text-[13px] sm:text-[9px] font-mono tracking-wider transition-colors flex items-center gap-2.5 border-b border-white/[0.02] last:border-0 disabled:opacity-40 min-h-[48px] sm:min-h-[auto] ${
-                              isSelected
-                                ? "text-[#00D4FF] bg-[#00D4FF]/6"
-                                : "text-white/35 hover:text-white/55 hover:bg-white/[0.02]"
-                            }`}
-                          >
-                            {isSelected && <div className="w-1 h-3 rounded-full bg-[#00D4FF]/50 shrink-0" />}
-                            {!isSelected && <div className="w-1 shrink-0" />}
-                            <span className="truncate">{m.name || m.id}</span>
-                          </button>
-                        );
-                      })}
+              <>
+                {/* Backdrop */}
+                <motion.div
+                  className="fixed inset-0 z-40 bg-black/60 sm:hidden"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setModelOpen(false)}
+                />
+                <motion.div
+                  className="fixed sm:absolute z-50 sm:z-50 left-0 sm:left-auto right-0 sm:right-0 bottom-0 sm:top-full sm:mt-1 sm:mb-0 sm:min-w-[280px] bg-[#080C10] sm:border sm:border-white/[0.06] rounded-t-xl sm:rounded-lg shadow-xl sm:max-h-[60vh] overflow-y-auto"
+                  initial={{ y: 200, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 200, opacity: 0 }}
+                  transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ maxHeight: "70vh", paddingBottom: "env(safe-area-inset-bottom, 16px)" }}
+                >
+                  {/* Header */}
+                  <div className="sticky top-0 bg-[#080C10] z-10 flex items-center justify-between px-4 py-3 border-b border-white/[0.04]">
+                    <span className="text-[9px] font-mono tracking-[0.15em] text-white/30">
+                      Models{modelCount ? ` (${modelCount})` : ""}
+                    </span>
+                    <button onClick={() => setModelOpen(false)} className="text-white/30 p-1.5 hover:text-white/50 transition-colors min-h-[40px] flex items-center justify-center">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Model list */}
+                  {available.length === 0 ? (
+                    <div className="px-4 py-6 text-center">
+                      <p className="text-[10px] font-mono text-white/15">No backends available</p>
+                      <p className="text-[8px] font-mono text-white/10 mt-2">Check API keys in .env</p>
                     </div>
-                  );
-                })}
-                <div className="sm:hidden h-12" />
-              </motion.div>
+                  ) : (
+                    available.map((bk) => {
+                      const backendModels = models[bk] || [];
+                      const isActive = bk === currentBackend;
+                      return (
+                        <div key={bk}>
+                          <div className="px-4 py-2 text-[7px] font-mono tracking-[0.15em] uppercase text-white/20 flex items-center gap-2 border-b border-white/[0.03]">
+                            {isActive && <div className="w-1 h-1 rounded-full bg-[#00D4FF]/50" />}
+                            <span className={isActive ? "text-[#00D4FF]/40" : ""}>{bk}</span>
+                            <span className="ml-auto text-white/[0.06]">{backendModels.length}</span>
+                          </div>
+                          {backendModels.length === 0 ? (
+                            <div className="px-4 py-2 text-[8px] font-mono text-white/12 italic">No models loaded</div>
+                          ) : (
+                            backendModels.slice(0, 50).map((m) => {
+                              const isSelected = isActive && m.id === currentModel;
+                              return (
+                                <button
+                                  key={m.id}
+                                  onClick={() => handleModelClick(bk, m.id)}
+                                  disabled={modelLoading}
+                                  className={`w-full text-left px-4 py-3 sm:py-2.5 text-[13px] sm:text-[10px] font-mono tracking-wider transition-colors flex items-center gap-2.5 border-b border-white/[0.02] last:border-0 disabled:opacity-40 min-h-[48px] ${
+                                    isSelected
+                                      ? "text-[#00D4FF] bg-[#00D4FF]/6"
+                                      : "text-white/35 hover:text-white/55 hover:bg-white/[0.02]"
+                                  }`}
+                                >
+                                  {isSelected && <div className="w-1 h-3 rounded-full bg-[#00D4FF]/50 shrink-0" />}
+                                  {!isSelected && <div className="w-1 shrink-0" />}
+                                  <span className="truncate">{m.name || m.id}</span>
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                  <div className="sm:hidden h-4" />
+                </motion.div>
+              </>
             )}
           </AnimatePresence>
 
           {/* Theme dropdown */}
           <AnimatePresence>
             {themeOpen && (
-              <motion.div
-                className="absolute right-0 top-full mt-1 bg-[#080C10] border border-white/[0.06] rounded-lg py-1 min-w-[120px] z-50 shadow-lg gpu-layer"
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.15 }}
-              >
-                {(Object.keys(themes) as ThemeName[]).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => { setTheme(t); setThemeOpen(false); }}
-                    className={`w-full text-left px-3 py-2.5 sm:py-2 text-[11px] sm:text-[9px] font-mono tracking-wider transition-colors min-h-[44px] sm:min-h-[auto] ${
-                      theme === t
-                        ? "text-[#00D4FF] bg-[#00D4FF]/6"
-                        : "text-white/30 hover:text-white/50 hover:bg-white/[0.02]"
-                    }`}
-                  >
-                    {theme === t ? "▸ " : "  "}{themes[t].label}
-                  </button>
-                ))}
-              </motion.div>
+              <>
+                <motion.div
+                  className="fixed inset-0 z-40 sm:hidden bg-black/60"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setThemeOpen(false)}
+                />
+                <motion.div
+                  className="fixed sm:absolute z-50 bottom-0 sm:top-full sm:mt-1 sm:bottom-auto left-0 right-0 sm:right-0 sm:left-auto sm:min-w-[140px] bg-[#080C10] sm:border sm:border-white/[0.06] rounded-t-xl sm:rounded-lg shadow-xl overflow-y-auto"
+                  initial={{ y: 200, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 200, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ paddingBottom: "env(safe-area-inset-bottom, 16px)" }}
+                >
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.04] sm:hidden">
+                    <span className="text-[9px] font-mono tracking-[0.15em] text-white/30">Theme</span>
+                    <button onClick={() => setThemeOpen(false)} className="text-white/30 p-1.5 min-h-[40px] flex items-center justify-center">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  {(Object.keys(themes) as ThemeName[]).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => { setTheme(t); setThemeOpen(false); }}
+                      className={`w-full text-left px-4 py-3 sm:px-3 sm:py-2 text-[13px] sm:text-[10px] font-mono tracking-wider transition-colors min-h-[48px] sm:min-h-[auto] flex items-center gap-2 ${
+                        theme === t
+                          ? "text-[#00D4FF] bg-[#00D4FF]/6"
+                          : "text-white/30 hover:text-white/50 hover:bg-white/[0.02]"
+                      }`}
+                    >
+                      {theme === t ? <div className="w-1 h-3 rounded-full bg-[#00D4FF]/50 shrink-0" /> : <div className="w-1 shrink-0" />}
+                      <span className="truncate">{themes[t].label}</span>
+                    </button>
+                  ))}
+                  <div className="sm:hidden h-4" />
+                </motion.div>
+              </>
             )}
           </AnimatePresence>
         </div>
