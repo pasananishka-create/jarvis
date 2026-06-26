@@ -77,7 +77,7 @@ export default function InputBar({ onSend, disabled }: InputBarProps) {
             enterKeyHint="send"
             className={`w-full bg-white/[0.04] border rounded-xl px-3 sm:px-4 py-3 sm:py-3 pr-10 text-[15px] sm:text-sm text-white/85 placeholder-white/15 focus:outline-none transition-all duration-300 disabled:opacity-30 resize-none overflow-y-auto max-h-[120px] sm:max-h-[140px] leading-relaxed font-sans ${
               focused
-                ? "border-jarvis/30 bg-white/[0.06]"
+                ? "border-jarvis/30 bg-white/[0.06] shadow-[0_0_20px_rgba(0,212,255,0.06)]"
                 : "border-white/[0.06] hover:border-white/[0.1]"
             }`}
           />
@@ -98,8 +98,12 @@ export default function InputBar({ onSend, disabled }: InputBarProps) {
         <motion.button
           type="submit"
           disabled={disabled || !text.trim()}
-          className="shrink-0 rounded-xl bg-jarvis/10 border border-jarvis/25 text-jarvis text-sm font-medium disabled:opacity-15 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center min-h-[44px] sm:min-h-[48px] min-w-[44px] sm:min-w-[48px]"
-          whileHover={text.trim() && !disabled ? { backgroundColor: "rgba(0, 212, 255, 0.18)", borderColor: "rgba(0, 212, 255, 0.4)", scale: 1.02 } : {}}
+          className={`shrink-0 rounded-xl border text-jarvis text-sm font-medium disabled:opacity-15 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center min-h-[44px] sm:min-h-[48px] min-w-[44px] sm:min-w-[48px] ${
+            text.trim() && !disabled
+              ? "bg-jarvis/15 border-jarvis/40 pulse-border"
+              : "bg-jarvis/10 border-jarvis/25"
+          }`}
+          whileHover={text.trim() && !disabled ? { backgroundColor: "rgba(0, 212, 255, 0.2)", scale: 1.02 } : {}}
           whileTap={text.trim() && !disabled ? { scale: 0.95 } : {}}
         >
           <svg className="w-[18px] h-[18px] sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

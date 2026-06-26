@@ -33,7 +33,7 @@ function TypingIndicator() {
 function StreamingText({ text }: { text: string }) {
   return (
     <div className="flex justify-start mb-2 sm:mb-3.5">
-      <div className="glass-panel rounded-2xl px-3 sm:px-4.5 py-2.5 sm:py-3 text-white/85 max-w-[92%] sm:max-w-[82%] md:max-w-[72%]">
+      <div className="glass-panel rounded-2xl px-3 sm:px-4.5 py-2.5 sm:py-3 text-white/85 max-w-[92%] sm:max-w-[82%] md:max-w-[72%] hud-corner">
         <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
           <div className="w-[14px] h-[14px] sm:w-4 sm:h-4 rounded-full bg-jarvis/15 border border-jarvis/25 flex items-center justify-center shrink-0">
             <div className="w-[5px] h-[5px] sm:w-1.5 sm:h-1.5 rounded-full bg-jarvis/60" />
@@ -60,6 +60,18 @@ function EmptyState() {
     "Run a Python script",
     "Check my system status",
   ];
+  const [cmdText, setCmdText] = useState("");
+  const cmdFull = "J.A.R.V.I.S. online. Awaiting input.";
+
+  useEffect(() => {
+    let i = 0;
+    const id = setInterval(() => {
+      i++;
+      setCmdText(cmdFull.slice(0, i));
+      if (i >= cmdFull.length) clearInterval(id);
+    }, 40);
+    return () => clearInterval(id);
+  }, []);
 
   return (
     <motion.div
@@ -68,26 +80,32 @@ function EmptyState() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.8, delay: 0.3 }}
     >
-      <motion.p
-        className="text-[10px] sm:text-xs font-mono tracking-[0.3em] text-white/20 uppercase mb-5 sm:mb-8"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
+      <motion.div
+        className="text-[10px] sm:text-xs font-mono tracking-[0.2em] text-jarvis/50 mb-5 sm:mb-8 h-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.5 }}
       >
-        How may I assist you?
-      </motion.p>
+        <span className="text-jarvis/30">&gt; </span>
+        {cmdText}
+        <motion.span
+          className="inline-block w-[2px] h-[11px] sm:h-3 bg-jarvis/60 ml-0.5 align-text-bottom"
+          animate={{ opacity: [1, 0] }}
+          transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse" }}
+        />
+      </motion.div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 w-full max-w-md">
         {suggestions.map((s, i) => (
           <motion.button
             key={s}
-            className="text-left glass-panel rounded-xl px-3 sm:px-3.5 py-2.5 sm:py-2.5 text-[12px] sm:text-[12px] text-white/40 active:text-white/70 hover:text-white/70 hover:bg-white/[0.04] transition-all cursor-pointer active:bg-white/[0.06]"
+            className="text-left glass-panel rounded-xl px-3 sm:px-3.5 py-2.5 sm:py-2.5 text-[12px] sm:text-[12px] text-white/40 active:text-white/70 hover:text-white/70 hover:bg-white/[0.04] transition-all cursor-pointer active:bg-white/[0.06] hud-corner"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.7 + i * 0.1, ease: [0.16, 1, 0.3, 1] }}
             whileHover={{ x: 4, borderColor: "rgba(0, 212, 255, 0.2)" }}
           >
-            {s}
+            <span className="text-jarvis/30 mr-1">&gt;</span> {s}
           </motion.button>
         ))}
       </div>

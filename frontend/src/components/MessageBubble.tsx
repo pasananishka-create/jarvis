@@ -21,7 +21,7 @@ export default function MessageBubble({ message, index }: MessageBubbleProps) {
       }}
     >
       <motion.div
-        className={`rounded-2xl px-3 sm:px-4.5 py-2.5 sm:py-3 ${
+        className={`rounded-2xl px-3 sm:px-4.5 py-2.5 sm:py-3 hud-corner ${
           isUser
             ? "bg-jarvis/8 border border-jarvis/20 text-white/90 max-w-[85%] sm:max-w-[72%] md:max-w-[62%]"
             : "glass-panel text-white/85 max-w-[92%] sm:max-w-[82%] md:max-w-[72%]"

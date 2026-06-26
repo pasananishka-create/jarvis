@@ -36,7 +36,7 @@ export default function HolographicRing({ active, listening }: HolographicRingPr
       }
       lastTime = time;
 
-      const speed = prefersReducedMotion ? 0.002 : 0.006;
+      const speed = prefersReducedMotion ? 0.001 : 0.004;
       angleRef.current += speed;
 
       const cx = canvas.width / 2;
@@ -49,6 +49,18 @@ export default function HolographicRing({ active, listening }: HolographicRingPr
       const pulse = listening ? 1 + 0.06 * Math.sin(a * 3) : 1;
       const baseAlpha = active ? 0.2 : 0.08;
       const glowAlpha = active ? 0.6 : 0.2;
+      const brightAlpha = active ? 0.9 : 0.3;
+
+      // Hex ring segments (6 arcs like a hex)
+      for (let i = 0; i < 6; i++) {
+        const startAngle = (Math.PI / 3) * i + a * 0.3;
+        const endAngle = startAngle + 0.4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 1.15 * pulse, startAngle, endAngle);
+        ctx.strokeStyle = `rgba(0, 200, 255, ${baseAlpha * 0.6})`;
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      }
 
       // Outer faint ring
       ctx.beginPath();
@@ -59,7 +71,7 @@ export default function HolographicRing({ active, listening }: HolographicRingPr
 
       // Main rotating arc
       ctx.beginPath();
-      ctx.arc(cx, cy, r * pulse, a, a + 1.0);
+      ctx.arc(cx, cy, r * pulse, a, a + 1.2);
       ctx.strokeStyle = `rgba(0, 200, 255, ${glowAlpha})`;
       ctx.lineWidth = 2;
       ctx.shadowColor = "#00c8ff";
@@ -69,7 +81,7 @@ export default function HolographicRing({ active, listening }: HolographicRingPr
 
       // Secondary arc (opposite)
       ctx.beginPath();
-      ctx.arc(cx, cy, r * 0.85 * pulse, -a + 1.5, -a + 2.2);
+      ctx.arc(cx, cy, r * 0.85 * pulse, -a + 1.5, -a + 2.5);
       ctx.strokeStyle = `rgba(0, 200, 255, ${glowAlpha * 0.7})`;
       ctx.lineWidth = 1.5;
       ctx.shadowColor = "#00c8ff";
@@ -84,21 +96,36 @@ export default function HolographicRing({ active, listening }: HolographicRingPr
       ctx.lineWidth = 0.5;
       ctx.stroke();
 
+      // Orbital dots on outer ring
+      for (let i = 0; i < 4; i++) {
+        const dotAngle = a + (Math.PI / 2) * i;
+        const dx = cx + r * pulse * Math.cos(dotAngle);
+        const dy = cy + r * pulse * Math.sin(dotAngle);
+        ctx.beginPath();
+        ctx.arc(dx, dy, 1.2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 200, 255, ${glowAlpha * 0.8})`;
+        ctx.shadowColor = "#00c8ff";
+        ctx.shadowBlur = 10;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
       // Center glow
       const dotSize = listening ? 2.5 + 1.5 * Math.sin(a * 4) : 2.5;
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotSize * 3);
-      grad.addColorStop(0, `rgba(0, 200, 255, ${active ? 0.9 : 0.3})`);
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotSize * 5);
+      grad.addColorStop(0, `rgba(0, 200, 255, ${brightAlpha})`);
+      grad.addColorStop(0.3, `rgba(0, 200, 255, ${brightAlpha * 0.4})`);
       grad.addColorStop(1, `rgba(0, 200, 255, 0)`);
       ctx.beginPath();
-      ctx.arc(cx, cy, dotSize * 3, 0, Math.PI * 2);
+      ctx.arc(cx, cy, dotSize * 5, 0, Math.PI * 2);
       ctx.fillStyle = grad;
       ctx.fill();
 
       ctx.beginPath();
       ctx.arc(cx, cy, dotSize, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(0, 200, 255, ${active ? 0.9 : 0.3})`;
+      ctx.fillStyle = `rgba(255, 255, 255, ${active ? 1 : 0.4})`;
       ctx.shadowColor = "#00c8ff";
-      ctx.shadowBlur = active ? 25 : 6;
+      ctx.shadowBlur = active ? 30 : 8;
       ctx.fill();
       ctx.shadowBlur = 0;
 
@@ -117,7 +144,7 @@ export default function HolographicRing({ active, listening }: HolographicRingPr
       <canvas
         ref={canvasRef}
         className="max-w-[140px] sm:max-w-[240px] md:max-w-[300px] w-full h-auto"
-        style={{ filter: "drop-shadow(0 0 40px rgba(0,200,255,0.12))" }}
+        style={{ filter: "drop-shadow(0 0 60px rgba(0,200,255,0.15))" }}
       />
     </div>
   );

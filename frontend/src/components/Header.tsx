@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ConnectionStatus, BackendInfo } from "../types";
 
@@ -19,6 +19,38 @@ function LiveTime() {
     <span className="font-mono text-[10px] sm:text-xs text-white/30 tracking-wider tabular-nums">
       {time.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" })}
     </span>
+  );
+}
+
+function StatusTicker() {
+  const [line, setLine] = useState("SYSTEMS INITIALIZED");
+  const tickerRef = useRef<string[]>([
+    "CORE TEMP: 36.2°C",
+    "MEM: 847MB / 4GB",
+    "UPTIME: 00:12:47",
+    "SIGNAL: 98.7%",
+    "ALL SYSTEMS NOMINAL",
+  ]);
+  const idxRef = useRef(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      idxRef.current = (idxRef.current + 1) % tickerRef.current.length;
+      setLine(tickerRef.current[idxRef.current]);
+    }, 4000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <motion.span
+      className="text-[7px] sm:text-[8px] font-mono text-jarvis/30 tracking-[0.15em]"
+      key={line}
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      {line}
+    </motion.span>
   );
 }
 
@@ -94,6 +126,10 @@ export default function Header({ status, backendInfo, onClear, onSwitchBackend }
               </motion.span>
             </div>
           </div>
+        </div>
+
+        <div className="hidden sm:block absolute left-1/2 -translate-x-1/2 pointer-events-none">
+          <StatusTicker />
         </div>
 
         <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
