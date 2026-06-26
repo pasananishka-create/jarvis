@@ -1,5 +1,4 @@
 import logging
-import time
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -32,6 +31,31 @@ class AIBackend(ABC):
                 last_error = e
                 logger.warning("Model %s failed: %s", model, e)
                 continue
+        # NVIDIA models sometimes emit tool calls in an incompatible format.
+        # Retry forcing text-only — strip tool history so model doesn't continue tool pattern.
+        if tools:
+            logger.info("All models failed with tools, retrying text-only")
+            text_messages = []
+            for m in messages:
+                if m["role"] in ("tool",):
+                    continue
+                if m["role"] == "system":
+                    text_messages.append({
+                        "role": "system",
+                        "content": "You are Jarvis, a helpful AI assistant. Answer concisely in plain text. Do NOT use any functions, tools, or special formatting.",
+                    })
+                else:
+                    entry = dict(m)
+                    entry.pop("tool_calls", None)
+                    text_messages.append(entry)
+            for model in models_to_try:
+                try:
+                    self._current_model = model
+                    return self.chat(text_messages, tools=None)
+                except Exception as e:
+                    logger.warning("Model %s (text-only) failed: %s", model, e)
+                    last_error = e
+                    continue
         raise last_error or RuntimeError(f"{self.__class__.__name__}: all models exhausted")
 
 
@@ -134,10 +158,14 @@ class NvidiaBackend(AIBackend):
     fallback_models = Config.NVIDIA_FALLBACK_MODELS
 
     def __init__(self):
-        from openai import OpenAI
-        self.client = OpenAI(
+        import httpx
+        self._client = httpx.Client(
             base_url=Config.NVIDIA_BASE_URL,
-            api_key=Config.NVIDIA_API_KEY,
+            headers={
+                "Authorization": f"Bearer {Config.NVIDIA_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            timeout=120,
         )
         self._current_model = Config.NVIDIA_MODEL
 
@@ -150,7 +178,7 @@ class NvidiaBackend(AIBackend):
         return self._current_model
 
     def chat(self, messages, tools=None):
-        kwargs = dict(model=self._current_model, messages=messages)
+        body: dict = {"model": self._current_model, "messages": messages}
         if tools:
             simplified = []
             for t in tools:
@@ -163,19 +191,28 @@ class NvidiaBackend(AIBackend):
                         "parameters": fn["parameters"],
                     },
                 })
-            kwargs["tools"] = simplified
-            kwargs["tool_choice"] = "auto"
+            body["tools"] = simplified
+            body["tool_choice"] = "auto"
 
-        resp = self.client.chat.completions.create(**kwargs)
-        msg = resp.choices[0].message
-        result = {"role": "assistant", "content": msg.content or ""}
-        if msg.tool_calls:
+        resp = self._client.post("/chat/completions", json=body)
+        if resp.status_code != 200:
+            raise RuntimeError(
+                f"NVIDIA API error: {resp.status_code} - {resp.text[:500]}"
+            )
+
+        data = resp.json()
+        choice = data["choices"][0]
+        msg = choice["message"]
+
+        result = {"role": "assistant", "content": msg.get("content") or ""}
+        raw_calls = msg.get("tool_calls")
+        if raw_calls:
             result["tool_calls"] = [
                 {
-                    "id": tc.id,
-                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                    "id": tc["id"],
+                    "function": {"name": tc["function"]["name"], "arguments": tc["function"]["arguments"]},
                 }
-                for tc in msg.tool_calls
+                for tc in raw_calls
             ]
         return result
 

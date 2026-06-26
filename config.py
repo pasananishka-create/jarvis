@@ -17,13 +17,12 @@ class Config:
 
     # NVIDIA NIM
     NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY", "")
-    NVIDIA_MODEL = os.getenv("NVIDIA_MODEL", "nvidia/llama-3.1-nemotron-70b-instruct")
+    NVIDIA_MODEL = os.getenv("NVIDIA_MODEL", "meta/llama-3.3-70b-instruct")
     NVIDIA_BASE_URL = os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.com/v1")
 
     # Fallback chain: models to try for each backend (most capable first)
     NVIDIA_FALLBACK_MODELS = [
-        os.getenv("NVIDIA_MODEL", "nvidia/llama-3.1-nemotron-70b-instruct"),
-        "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+        os.getenv("NVIDIA_MODEL", "meta/llama-3.3-70b-instruct"),
         "meta/llama-3.3-70b-instruct",
         "meta/llama-3.1-8b-instruct",
     ]
