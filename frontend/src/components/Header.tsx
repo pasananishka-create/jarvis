@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ConnectionStatus, BackendInfo } from "../types";
+import { useTheme, type ThemeName } from "../hooks/useTheme";
 
 interface HeaderProps {
   status: ConnectionStatus;
@@ -84,6 +85,8 @@ function StatusDot({ status }: { status: ConnectionStatus }) {
 
 export default function Header({ status, backendInfo, onClear, onSwitchBackend }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
+  const { theme, setTheme, themes } = useTheme();
   const statusLabel = status === "connected" ? "Online" : status === "connecting" ? "Connecting..." : "Offline";
 
   return (
@@ -166,6 +169,45 @@ export default function Header({ status, backendInfo, onClear, onSwitchBackend }
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
           </motion.button>
+
+          <div className="relative">
+            <motion.button
+              onClick={() => setThemeOpen((o) => !o)}
+              className="relative text-white/25 hover:text-white/50 p-1.5 sm:p-2 rounded-lg hover:bg-white/[0.04] transition-colors"
+              title="Theme"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <svg className="w-3 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+              </svg>
+            </motion.button>
+            <AnimatePresence>
+              {themeOpen && (
+                <motion.div
+                  className="absolute right-0 top-full mt-1 bg-bg-dark border border-white/[0.08] rounded-lg py-1 min-w-[130px] z-50 shadow-lg"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  {(Object.keys(themes) as ThemeName[]).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => { setTheme(t); setThemeOpen(false); }}
+                      className={`w-full text-left px-3 py-1.5 text-[10px] sm:text-[11px] font-mono tracking-wider transition-colors ${
+                        theme === t
+                          ? "text-jarvis bg-white/[0.04]"
+                          : "text-white/40 hover:text-white/60 hover:bg-white/[0.02]"
+                      }`}
+                    >
+                      {theme === t ? "▸ " : "  "}{themes[t].label}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
     </motion.header>

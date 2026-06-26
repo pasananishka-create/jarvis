@@ -102,7 +102,11 @@ export default function App() {
         {showSplash && <SplashScreen key="splash" onFinish={() => setShowSplash(false)} />}
       </AnimatePresence>
 
-      {!showSplash && <Chat keyboardHeight={keyboardHeight} />}
+      {!showSplash && (
+        <div className="flex flex-1 overflow-hidden">
+          <Chat keyboardHeight={keyboardHeight} />
+        </div>
+      )}
     </div>
   );
 }

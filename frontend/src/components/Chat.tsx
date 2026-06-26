@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useJarvis } from "../hooks/useJarvis";
 import type { Message, BackendInfo } from "../types";
 import Header from "./Header";
+import DashboardSidebar from "./DashboardSidebar";
+import AvatarDisplay from "./AvatarDisplay";
 import HolographicRing from "./HolographicRing";
 import MessageBubble from "./MessageBubble";
 import InputBar from "./InputBar";
@@ -200,55 +202,74 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
 
   return (
     <motion.div
-      className="flex flex-col h-full safe-bottom"
-      style={{ paddingBottom: keyboardHeight > 0 ? 0 : undefined }}
+      className="flex flex-1 overflow-hidden"
+      style={{ marginBottom: keyboardHeight }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
-      <Header
+      <DashboardSidebar
         status={status}
         backendInfo={backendInfo}
-        onClear={handleClear}
-        onSwitchBackend={handleSwitchBackend}
+        thinking={thinking}
       />
 
-      <div
-        ref={chatRef}
-        className="flex-1 overflow-y-auto px-3 sm:px-5 md:px-6 scroll-smooth overscroll-contain"
-      >
-        <div className="max-w-4xl mx-auto">
-          <HolographicRing
-            active={status === "connected"}
-            listening={thinking}
-          />
+      <div className="flex flex-col flex-1 min-w-0 safe-bottom">
+        <Header
+          status={status}
+          backendInfo={backendInfo}
+          onClear={handleClear}
+          onSwitchBackend={handleSwitchBackend}
+        />
 
-          {!hasMessages ? (
-            <EmptyState />
-          ) : (
-            <motion.div className="pb-4 sm:pb-6" layout>
-              <AnimatePresence mode="popLayout">
-                {messages.map((msg, i) => (
-                  <MessageBubble key={msg.id} message={msg} index={i} />
-                ))}
-              </AnimatePresence>
+        <div
+          ref={chatRef}
+          className="flex-1 overflow-y-auto px-3 sm:px-5 md:px-6 scroll-smooth overscroll-contain"
+        >
+          <div className="max-w-4xl mx-auto">
+            {!hasMessages ? (
+              <>
+                <div className="py-4 sm:py-6">
+                  <AvatarDisplay
+                    active={status === "connected"}
+                    listening={thinking}
+                  />
+                </div>
+                <EmptyState />
+              </>
+            ) : (
+              <>
+                <div className="py-2 sm:py-3">
+                  <AvatarDisplay
+                    active={status === "connected"}
+                    listening={thinking}
+                  />
+                </div>
+                <motion.div className="pb-4 sm:pb-6" layout>
+                  <AnimatePresence mode="popLayout">
+                    {messages.map((msg, i) => (
+                      <MessageBubble key={msg.id} message={msg} index={i} />
+                    ))}
+                  </AnimatePresence>
 
-              <AnimatePresence>
-                {thinking && streamingId && (
-                  streamingText ? (
-                    <StreamingText key="streaming" text={streamingText} />
-                  ) : (
-                    <TypingIndicator key="typing" />
-                  )
-                )}
-              </AnimatePresence>
-            </motion.div>
-          )}
-          <div ref={bottomRef} />
+                  <AnimatePresence>
+                    {thinking && streamingId && (
+                      streamingText ? (
+                        <StreamingText key="streaming" text={streamingText} />
+                      ) : (
+                        <TypingIndicator key="typing" />
+                      )
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              </>
+            )}
+            <div ref={bottomRef} />
+          </div>
         </div>
-      </div>
 
-      <InputBar onSend={handleSend} disabled={thinking} />
+        <InputBar onSend={handleSend} disabled={thinking} />
+      </div>
     </motion.div>
   );
 }
