@@ -1,0 +1,7 @@
+# Local Only — uses Ollama, no cloud API keys needed
+# Requires: ollama running locally with a model pulled
+[backend]
+preferred = "ollama"
+
+[abilities]
+enabled = ["web_search", "run_command", "run_python"]

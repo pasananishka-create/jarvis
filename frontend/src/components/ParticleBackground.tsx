@@ -16,6 +16,13 @@ export default function ParticleBackground() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Respect reduced motion preference
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) return;
+
+    // Detect mobile by screen width
+    const isMobile = window.innerWidth < 640;
+
     const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -23,12 +30,13 @@ export default function ParticleBackground() {
     resize();
     window.addEventListener("resize", resize);
 
-    const count = Math.min(120, Math.floor((canvas.width * canvas.height) / 12000));
+    const density = isMobile ? 20000 : 12000;
+    const count = Math.min(isMobile ? 40 : 120, Math.floor((canvas.width * canvas.height) / density));
     particlesRef.current = Array.from({ length: count }, () => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * 0.3,
-      vy: (Math.random() - 0.5) * 0.3,
+      vx: (Math.random() - 0.5) * (isMobile ? 0.15 : 0.3),
+      vy: (Math.random() - 0.5) * (isMobile ? 0.15 : 0.3),
       size: Math.random() * 1.5 + 0.5,
       alpha: Math.random() * 0.5 + 0.2,
     }));
@@ -36,7 +44,9 @@ export default function ParticleBackground() {
     const onMouse = (e: MouseEvent) => {
       mouseRef.current = { x: e.clientX, y: e.clientY };
     };
-    window.addEventListener("mousemove", onMouse);
+    if (!isMobile) {
+      window.addEventListener("mousemove", onMouse);
+    }
 
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -57,31 +67,33 @@ export default function ParticleBackground() {
         ctx.fillStyle = `rgba(0, 212, 255, ${p.alpha})`;
         ctx.fill();
 
-        for (let j = i + 1; j < particles.length; j++) {
-          const p2 = particles[j];
-          const dx = p.x - p2.x;
-          const dy = p.y - p2.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 120) {
+        if (!isMobile) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const p2 = particles[j];
+            const dx = p.x - p2.x;
+            const dy = p.y - p2.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 120) {
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.strokeStyle = `rgba(0, 212, 255, ${0.08 * (1 - dist / 120)})`;
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
+          }
+
+          const dxm = p.x - mouse.x;
+          const dym = p.y - mouse.y;
+          const distm = Math.sqrt(dxm * dxm + dym * dym);
+          if (distm < 150) {
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.strokeStyle = `rgba(0, 212, 255, ${0.08 * (1 - dist / 120)})`;
+            ctx.lineTo(mouse.x, mouse.y);
+            ctx.strokeStyle = `rgba(0, 212, 255, ${0.04 * (1 - distm / 150)})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
-        }
-
-        const dxm = p.x - mouse.x;
-        const dym = p.y - mouse.y;
-        const distm = Math.sqrt(dxm * dxm + dym * dym);
-        if (distm < 150) {
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(mouse.x, mouse.y);
-          ctx.strokeStyle = `rgba(0, 212, 255, ${0.04 * (1 - distm / 150)})`;
-          ctx.lineWidth = 0.5;
-          ctx.stroke();
         }
       }
 
@@ -100,7 +112,6 @@ export default function ParticleBackground() {
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-0"
-      style={{ opacity: 0.8 }}
     />
   );
 }

@@ -1,0 +1,11 @@
+# Deep Research — multi-turn research with code execution
+# Usage: jarvis ask "Analyze this dataset and create a visualization"
+[backend]
+preferred = "anthropic"
+fallback = "openai"
+
+[abilities]
+enabled = ["web_search", "run_python", "run_command"]
+
+[assistant]
+max_turns = 10

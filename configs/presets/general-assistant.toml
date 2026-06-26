@@ -1,0 +1,11 @@
+# General Assistant — everyday Q&A with web search
+# Usage: jarvis ask "What's the weather in Tokyo?"
+[backend]
+preferred = "openai"
+fallback = "ollama"
+
+[abilities]
+enabled = ["web_search", "run_command", "run_python"]
+
+[persona]
+file = "configs/personas/jarvis.md"

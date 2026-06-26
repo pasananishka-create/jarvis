@@ -21,6 +21,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Frontend
+        env:
+          NODE_OPTIONS: "--no-deprecation"
         run: npm ci && npm run build && npx cap sync android
         working-directory: frontend
 
@@ -35,6 +37,8 @@ jobs:
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-36" "build-tools;36.0.0"
 
       - name: Build APK
+        env:
+          NODE_OPTIONS: "--no-deprecation"
         run: |
           cd frontend/android
           chmod +x gradlew
@@ -44,5 +48,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create latest --title "J.A.R.V.I.S. APK" --notes "Auto-built from \`main\` branch" 2>/dev/null || true
-          gh release upload latest frontend/android/app/build/outputs/apk/debug/app-debug.apk --clobber
+          gh release create latest \
+            --title "J.A.R.V.I.S. APK" \
+            --notes "Auto-built from \`main\` branch — [Download APK](https://github.com/${{ github.repository }}/releases/download/latest/app-debug.apk)" \
+            --latest \
+            2>/dev/null || true
+          gh release upload latest \
+            frontend/android/app/build/outputs/apk/debug/app-debug.apk \
+            --clobber

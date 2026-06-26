@@ -8,8 +8,8 @@ import InputBar from "./InputBar";
 
 function TypingIndicator() {
   return (
-    <div className="flex justify-start mb-3">
-      <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-3 flex items-center gap-1.5">
+    <div className="flex justify-start mb-2 sm:mb-3">
+      <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3 flex items-center gap-1.5">
         {[0, 1, 2].map((i) => (
           <div
             key={i}
@@ -114,7 +114,7 @@ export default function Chat() {
   );
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full safe-bottom">
       <Header
         status={status}
         backendInfo={backendInfo}
@@ -122,21 +122,21 @@ export default function Chat() {
         onSwitchBackend={handleSwitchBackend}
       />
 
-      <div className="flex-1 overflow-y-auto px-4 scroll-smooth">
+      <div className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 scroll-smooth overscroll-contain">
         <div className="max-w-4xl mx-auto">
           <HolographicRing
             active={status === "connected"}
             listening={thinking}
           />
 
-          <div className="pb-2">
+          <div className="pb-2 sm:pb-4">
             {messages.map((msg) => (
               <MessageBubble key={msg.id} message={msg} />
             ))}
             {thinking && streamingId && (
               streamingText ? (
-                <div className="flex justify-start mb-3">
-                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-2.5 text-sm text-white/85 leading-relaxed whitespace-pre-wrap break-words max-w-[88%] md:max-w-[75%]">
+                <div className="flex justify-start mb-2 sm:mb-3">
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm text-white/85 leading-relaxed whitespace-pre-wrap break-words max-w-[92%] sm:max-w-[85%] md:max-w-[75%]">
                     {streamingText}
                     <span className="inline-block w-1.5 h-4 bg-jarvis/60 ml-0.5 animate-pulse" />
                   </div>
