@@ -41,6 +41,11 @@ class BackendSwitch(BaseModel):
     backend: str
 
 
+class ModelSwitch(BaseModel):
+    backend: str
+    model: str
+
+
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "backend": assistant.brain.active_name}
@@ -53,6 +58,14 @@ async def list_abilities():
             {"name": name, "description": ab.description}
             for name, ab in assistant.abilities.items()
         ]
+    }
+
+
+@app.get("/api/models")
+async def list_models():
+    return {
+        "active": assistant.brain.active_name,
+        "models": assistant.brain.list_all_models(),
     }
 
 
@@ -71,6 +84,15 @@ async def switch_backend(req: BackendSwitch):
         "success": ok,
         "active": assistant.brain.active_name,
         "available": assistant.brain.list_backends(),
+    }
+
+
+@app.post("/api/model/switch")
+async def switch_model(req: ModelSwitch):
+    ok = assistant.brain.switch_model(req.backend, req.model)
+    return {
+        "success": ok,
+        "active": assistant.brain.active_name,
     }
 
 
@@ -141,6 +163,24 @@ async def websocket_endpoint(websocket: WebSocket):
                         "success": ok,
                         "active": assistant.brain.active_name,
                     })
+                elif cmd.startswith("model:"):
+                    parts = cmd.split(":")
+                    if len(parts) >= 3:
+                        bk = parts[1].strip()
+                        mdl = ":".join(parts[2:]).strip()
+                        ok = assistant.brain.switch_model(bk, mdl)
+                        await websocket.send_json({
+                            "type": "model_changed",
+                            "success": ok,
+                            "active": assistant.brain.active_name,
+                        })
+
+            elif msg.get("type") == "get_models":
+                models = assistant.brain.list_all_models()
+                await websocket.send_json({
+                    "type": "models_list",
+                    "models": models,
+                })
 
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected")

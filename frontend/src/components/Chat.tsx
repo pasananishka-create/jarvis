@@ -1,135 +1,142 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useJarvis } from "../hooks/useJarvis";
-import type { Message, BackendInfo } from "../types";
+import type { Message, BackendInfo, ModelInfo } from "../types";
 import Header from "./Header";
-import DashboardSidebar from "./DashboardSidebar";
-import AvatarDisplay from "./AvatarDisplay";
-import HolographicRing from "./HolographicRing";
-import MessageBubble from "./MessageBubble";
+import CentralRing from "./CentralRing";
 import InputBar from "./InputBar";
 
-function TypingIndicator() {
+type ChatState = "idle" | "listening" | "processing" | "responding" | "error";
+
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setReduced(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return reduced;
+}
+
+function WordByWordText({ text, speed = 20 }: { text: string; speed?: number }) {
+  const [visible, setVisible] = useState(0);
+  const words = text.split(" ");
+  const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
+
+  useEffect(() => {
+    setVisible(0);
+    timerRef.current = setInterval(() => {
+      setVisible((v) => {
+        if (v >= words.length) {
+          clearInterval(timerRef.current);
+          return words.length;
+        }
+        return v + 1;
+      });
+    }, speed);
+    return () => clearInterval(timerRef.current);
+  }, [text, speed]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <motion.div
-      className="flex justify-start mb-2.5 sm:mb-3.5"
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.3 }}
-    >
-      <div className="relative glass-panel rounded-2xl px-5 py-4 flex items-center gap-1.5">
-        <div className="think-ring" />
-        <div className="think-ring" />
-        <div className="think-ring" />
-        {[0, 1, 2].map((i) => (
-          <motion.div
-            key={i}
-            className="w-1.5 h-1.5 rounded-full bg-jarvis/50"
-            animate={{ y: [0, -5, 0] }}
-            transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
-          />
-        ))}
-      </div>
-    </motion.div>
+    <span className="whitespace-pre-wrap break-words">
+      {words.slice(0, visible).join(" ")}
+      {visible < words.length && (
+        <motion.span
+          className="inline-block w-[2px] h-[14px] sm:h-4 bg-[#00D4FF]/60 ml-0.5 align-text-bottom"
+          animate={{ opacity: [1, 0] }}
+          transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse" }}
+        />
+      )}
+    </span>
   );
 }
 
-function StreamingText({ text }: { text: string }) {
+function MessagesList({
+  messages,
+  reduced,
+  onRespondingDone,
+}: {
+  messages: Message[];
+  reduced: boolean;
+  onRespondingDone: () => void;
+}) {
+  const lastMsg = messages[messages.length - 1];
+  const [respondingId, setRespondingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (lastMsg && lastMsg.role === "assistant") {
+      setRespondingId(lastMsg.id);
+      const wordCount = lastMsg.content.split(" ").length;
+      const timer = setTimeout(
+        () => {
+          setRespondingId(null);
+          onRespondingDone();
+        },
+        reduced ? 100 : wordCount * 20 + 200
+      );
+      return () => clearTimeout(timer);
+    }
+  }, [lastMsg?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <div className="flex justify-start mb-2 sm:mb-3.5">
-      <div className="relative glass-panel rounded-2xl px-3 sm:px-4.5 py-2.5 sm:py-3 text-white/85 max-w-[92%] sm:max-w-[82%] md:max-w-[72%] hud-corner">
-        <div className="think-ring" />
-        <div className="think-ring" />
-        <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
-          <div className="w-[14px] h-[14px] sm:w-4 sm:h-4 rounded-full bg-jarvis/15 border border-jarvis/25 flex items-center justify-center shrink-0">
-            <div className="w-[5px] h-[5px] sm:w-1.5 sm:h-1.5 rounded-full bg-jarvis/60" />
-          </div>
-          <span className="text-[8px] sm:text-[9px] font-semibold tracking-[0.2em] text-jarvis/50 uppercase">Jarvis · Processing</span>
-        </div>
-        <p className="text-[14px] sm:text-sm leading-[1.6] sm:leading-relaxed whitespace-pre-wrap break-words">
-          {text}
-          <motion.span
-            className="inline-block w-[2px] h-[15px] sm:h-4 bg-jarvis/70 ml-0.5 align-text-bottom"
-            animate={{ opacity: [1, 0] }}
-            transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse" }}
-          />
-        </p>
-      </div>
+    <div className="space-y-2 sm:space-y-3">
+      <AnimatePresence mode="popLayout">
+        {messages.map((msg, i) => (
+          <motion.div
+            key={msg.id}
+            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            layout
+            initial={reduced ? { opacity: 0 } : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut", delay: i * 0.02 }}
+          >
+            <div
+              className={`rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 max-w-[88%] sm:max-w-[78%] md:max-w-[68%] ${
+                msg.role === "user"
+                  ? "bg-[#00D4FF]/8 border border-[#00D4FF]/15 text-[#E8F4F8]"
+                  : "border border-white/[0.06] text-[#E8F4F8]/85"
+              }`}
+            >
+              {msg.role === "assistant" && (
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[8px] font-mono tracking-[0.15em] text-[#00D4FF]/40 uppercase">
+                    Jarvis
+                  </span>
+                  <span className="text-[7px] font-mono text-white/10">
+                    {new Date(msg.timestamp).toLocaleTimeString("en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+              )}
+              <p className="text-[14px] sm:text-sm leading-[1.6] sm:leading-relaxed font-sans">
+                {msg.role === "assistant" && respondingId === msg.id && !reduced ? (
+                  <WordByWordText text={msg.content} />
+                ) : (
+                  msg.content
+                )}
+              </p>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }
 
-function EmptyState() {
-  const suggestions = [
-    "What can you help me with?",
-    "Search the web for latest AI news",
-    "Run a Python script",
-    "Check my system status",
-  ];
-  const [cmdText, setCmdText] = useState("");
-  const cmdFull = "J.A.R.V.I.S. online. Awaiting input.";
-
-  useEffect(() => {
-    let i = 0;
-    const id = setInterval(() => {
-      i++;
-      setCmdText(cmdFull.slice(0, i));
-      if (i >= cmdFull.length) clearInterval(id);
-    }, 40);
-    return () => clearInterval(id);
-  }, []);
-
-  return (
-    <motion.div
-      className="flex flex-col items-center justify-center py-6 sm:py-12 px-3 sm:px-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.8, delay: 0.3 }}
-    >
-      <motion.div
-        className="text-[10px] sm:text-xs font-mono tracking-[0.2em] text-jarvis/50 mb-5 sm:mb-8 h-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.6, delay: 0.5 }}
-      >
-        <span className="text-jarvis/30">&gt; </span>
-        {cmdText}
-        <motion.span
-          className="inline-block w-[2px] h-[11px] sm:h-3 bg-jarvis/60 ml-0.5 align-text-bottom"
-          animate={{ opacity: [1, 0] }}
-          transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse" }}
-        />
-      </motion.div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 w-full max-w-md">
-        {suggestions.map((s, i) => (
-          <motion.button
-            key={s}
-            className="text-left glass-panel rounded-xl px-3 sm:px-3.5 py-2.5 sm:py-2.5 text-[12px] sm:text-[12px] text-white/40 active:text-white/70 hover:text-white/70 hover:bg-white/[0.04] transition-all cursor-pointer active:bg-white/[0.06] hud-corner"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.7 + i * 0.1, ease: [0.16, 1, 0.3, 1] }}
-            whileHover={{ x: 4, borderColor: "rgba(0, 212, 255, 0.2)" }}
-          >
-            <span className="text-jarvis/30 mr-1">&gt;</span> {s}
-          </motion.button>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
-
 export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }) {
-  const { status, backend, sendMessage, sendCommand, onToken, onDone } = useJarvis();
+  const { status, backend, models, sendMessage, sendCommand, switchModel, onToken, onDone, onError } = useJarvis();
   const [messages, setMessages] = useState<Message[]>([]);
-  const [streamingId, setStreamingId] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState("");
-  const [backendInfo, setBackendInfo] = useState<BackendInfo | null>(null);
   const [thinking, setThinking] = useState(false);
+  const [chatState, setChatState] = useState<ChatState>("idle");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const streamTextRef = useRef("");
-  const chatRef = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion();
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
@@ -138,13 +145,6 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
   useEffect(() => {
     scrollToBottom();
   }, [messages, streamingText, scrollToBottom]);
-
-  useEffect(() => {
-    fetch("/api/backends")
-      .then((r) => r.json())
-      .then((data) => setBackendInfo(data))
-      .catch(() => {});
-  }, [backend]);
 
   useEffect(() => {
     onToken((token) => {
@@ -162,13 +162,19 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
           timestamp: Date.now(),
         },
       ]);
-      setStreamingId(null);
       setStreamingText("");
       streamTextRef.current = "";
       setThinking(false);
-      setBackendInfo((prev) => (prev ? { ...prev, active: bck } : prev));
+      setErrorMsg(null);
     });
-  }, [onToken, onDone]);
+
+    onError((err) => {
+      setErrorMsg(err);
+      setChatState("error");
+      setThinking(false);
+      setTimeout(() => setChatState("idle"), 3000);
+    });
+  }, [onToken, onDone, onError]);
 
   const handleSend = useCallback(
     (text: string) => {
@@ -181,9 +187,9 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
       setMessages((prev) => [...prev, userMsg]);
       streamTextRef.current = "";
       setStreamingText("");
-      const sid = `s-${Date.now()}`;
-      setStreamingId(sid);
       setThinking(true);
+      setChatState("processing");
+      setErrorMsg(null);
       sendMessage(text);
       scrollToBottom();
     },
@@ -192,101 +198,152 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
 
   const handleClear = useCallback(() => {
     setMessages([]);
+    setChatState("idle");
     sendCommand("clear");
   }, [sendCommand]);
 
   const handleSwitchBackend = useCallback(
-    (name: string) => {
-      sendCommand(`backend:${name}`);
-      setBackendInfo((prev) => (prev ? { ...prev, active: name } : prev));
-    },
+    (name: string) => sendCommand(`backend:${name}`),
     [sendCommand]
   );
 
-  const hasMessages = messages.length > 0 || thinking;
+  const handleSwitchModel = useCallback(
+    (backendName: string, modelId: string) => switchModel(backendName, modelId),
+    [switchModel]
+  );
+
+  useEffect(() => {
+    if (thinking && !streamingText) {
+      setChatState("processing");
+    } else if (thinking && streamingText) {
+      setChatState("responding");
+    } else if (!thinking && messages.length > 0) {
+      setChatState("idle");
+    }
+  }, [thinking, streamingText, messages.length]);
+
+  const hasMessages = messages.length > 0;
+
+  const backendInfo: BackendInfo = {
+    active: backend,
+    available: Object.keys(models),
+    models,
+  };
 
   return (
-    <motion.div
-      className="flex flex-1 overflow-hidden"
-      style={{ marginBottom: keyboardHeight }}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-    >
-      <DashboardSidebar
-        status={status}
-        backendInfo={backendInfo}
-        thinking={thinking}
-      />
-
-      <div className="flex flex-col flex-1 min-w-0 safe-bottom">
+    <div className="flex flex-1 min-w-0">
+      <div className="flex flex-col flex-1 min-w-0" style={{ paddingBottom: keyboardHeight }}>
         <Header
           status={status}
           backendInfo={backendInfo}
+          models={models}
           onClear={handleClear}
           onSwitchBackend={handleSwitchBackend}
+          onSwitchModel={handleSwitchModel}
         />
 
-        <div
-          ref={chatRef}
-          className="flex-1 overflow-y-auto px-3 sm:px-5 md:px-6 scroll-smooth overscroll-contain"
-        >
-          <div className="max-w-4xl mx-auto">
-            {!hasMessages ? (
-              <>
-                <div className="relative py-6 sm:py-8">
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 sm:w-64 sm:h-64">
-                    <div className="quantum-field" />
-                    <div className="quantum-field" />
-                    <div className="quantum-field" />
-                  </div>
-                  <AvatarDisplay
-                    active={status === "connected"}
-                    listening={thinking}
-                  />
-                </div>
-                <EmptyState />
-              </>
-            ) : (
-              <>
-                <div className="relative py-2 sm:py-3">
-                  {thinking && (
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32">
-                      <div className="data-ripple" />
-                      <div className="data-ripple" />
-                      <div className="data-ripple" />
-                    </div>
-                  )}
-                  <AvatarDisplay
-                    active={status === "connected"}
-                    listening={thinking}
-                  />
-                </div>
-                <motion.div className="pb-4 sm:pb-6" layout>
-                  <AnimatePresence mode="popLayout">
-                    {messages.map((msg, i) => (
-                      <MessageBubble key={msg.id} message={msg} index={i} />
-                    ))}
-                  </AnimatePresence>
-
-                  <AnimatePresence>
-                    {thinking && streamingId && (
-                      streamingText ? (
-                        <StreamingText key="streaming" text={streamingText} />
-                      ) : (
-                        <TypingIndicator key="typing" />
-                      )
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              </>
+        <div className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-8 scroll-smooth overscroll-contain">
+          <div className="max-w-3xl mx-auto">
+            {/* Central element - shown when no messages */}
+            {!hasMessages && !thinking && (
+              <div className="flex flex-col items-center justify-center pt-16 sm:pt-24 pb-8 sm:pb-12">
+                <CentralRing state="idle" />
+                <motion.p
+                  className="mt-12 text-[10px] font-mono tracking-[0.2em] text-[#00D4FF]/25"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.8, delay: 0.5 }}
+                >
+                  SYSTEM STANDBY
+                </motion.p>
+              </div>
             )}
+
+            {/* Central element during thinking (no prior messages) */}
+            {!hasMessages && thinking && (
+              <div className="flex flex-col items-center justify-center pt-16 sm:pt-24 pb-8 sm:pb-12">
+                <CentralRing state={streamingText ? "responding" : "processing"} />
+              </div>
+            )}
+
+            {/* Messages */}
+            {hasMessages && (
+              <div className="pt-4 sm:pt-6">
+                <MessagesList
+                  messages={messages}
+                  reduced={reduced}
+                  onRespondingDone={() => {}}
+                />
+
+                {/* Thinking/processing indicators */}
+                <AnimatePresence>
+                  {thinking && (
+                    <motion.div
+                      className="flex justify-start py-2"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <div className="flex items-center gap-2 border border-white/[0.06] rounded-lg px-3 py-2">
+                        <div className="relative w-6 h-6">
+                          <CentralRing state={streamingText ? "responding" : "processing"} />
+                        </div>
+                        {streamingText ? (
+                          <span className="text-[12px] font-sans text-[#E8F4F8]/60">
+                            {streamingText}
+                            <motion.span
+                              className="inline-block w-[2px] h-[14px] bg-[#00D4FF]/50 ml-0.5 align-text-bottom"
+                              animate={{ opacity: [1, 0] }}
+                              transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse" }}
+                            />
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-mono tracking-[0.15em] text-[#00D4FF]/40">
+                            PROCESSING
+                            {[0, 1, 2].map((i) => (
+                              <motion.span
+                                key={i}
+                                className="inline-block"
+                                animate={{ opacity: [0, 1, 0] }}
+                                transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
+                              >
+                                .
+                              </motion.span>
+                            ))}
+                          </span>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Error state */}
+                <AnimatePresence>
+                  {chatState === "error" && errorMsg && (
+                    <motion.div
+                      className="flex justify-center py-3"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                    >
+                      <div className="flex items-center gap-2 px-3 py-2 border border-red-400/20 rounded-lg">
+                        <div className="w-1.5 h-1.5 rounded-full bg-red-400/50" />
+                        <span className="text-[11px] font-mono text-red-400/50">
+                          Connection error — retrying...
+                        </span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
             <div ref={bottomRef} />
           </div>
         </div>
 
         <InputBar onSend={handleSend} disabled={thinking} />
       </div>
-    </motion.div>
+    </div>
   );
 }

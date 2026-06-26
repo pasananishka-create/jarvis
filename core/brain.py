@@ -19,11 +19,28 @@ class AIBackend(ABC):
     def name(self) -> str:
         ...
 
+    @property
+    @abstractmethod
+    def current_model(self) -> str:
+        ...
+
+    @abstractmethod
+    def available_models(self) -> list[dict]:
+        """Return list of {id, name, provider} for this backend."""
+        ...
+
+    def switch_model(self, model_id: str) -> bool:
+        if model_id in [m["id"] for m in self.available_models()]:
+            self._current_model = model_id
+            logger.info("%s switched to model: %s", self.__class__.__name__, model_id)
+            return True
+        logger.warning("Model '%s' not found in %s", model_id, self.__class__.__name__)
+        return False
+
     def chat_with_fallback(self, messages: list[dict], tools: Optional[list[dict]] = None) -> dict:
         models_to_try = self.fallback_models or [self._current_model]
         last_error = None
 
-        # Try one model with tools (most capable first)
         if tools and models_to_try:
             model = models_to_try[0]
             try:
@@ -34,7 +51,6 @@ class AIBackend(ABC):
                 logger.warning("Model %s with tools failed: %s", model, e)
                 last_error = e
 
-        # Retry text-only — strip tool history so model doesn't continue tool pattern.
         text_messages = []
         for m in messages:
             if m["role"] in ("tool",):
@@ -66,6 +82,7 @@ class OpenAIBackend(AIBackend):
         from openai import OpenAI
         self.client = OpenAI(api_key=Config.OPENAI_API_KEY)
         self._current_model = Config.OPENAI_MODEL
+        self._models_cache: Optional[list[dict]] = None
 
     @property
     def name(self):
@@ -74,6 +91,19 @@ class OpenAIBackend(AIBackend):
     @property
     def current_model(self):
         return self._current_model
+
+    def available_models(self) -> list[dict]:
+        if self._models_cache is None:
+            try:
+                resp = self.client.models.list()
+                self._models_cache = [
+                    {"id": m.id, "name": m.id, "provider": "openai"}
+                    for m in resp
+                    if not m.id.startswith("ft:")
+                ]
+            except Exception:
+                self._models_cache = [{"id": Config.OPENAI_MODEL, "name": Config.OPENAI_MODEL, "provider": "openai"}]
+        return self._models_cache
 
     def chat(self, messages, tools=None):
         kwargs = dict(model=self._current_model, messages=messages)
@@ -109,6 +139,15 @@ class AnthropicBackend(AIBackend):
     @property
     def current_model(self):
         return self._current_model
+
+    def available_models(self) -> list[dict]:
+        return [
+            {"id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4", "provider": "anthropic"},
+            {"id": "claude-3-5-sonnet-20241022", "name": "Claude 3.5 Sonnet", "provider": "anthropic"},
+            {"id": "claude-3-opus-20240229", "name": "Claude 3 Opus", "provider": "anthropic"},
+            {"id": "claude-3-haiku-20240307", "name": "Claude 3 Haiku", "provider": "anthropic"},
+            {"id": "claude-3-5-haiku-20241022", "name": "Claude 3.5 Haiku", "provider": "anthropic"},
+        ]
 
     def chat(self, messages, tools=None):
         system = None
@@ -158,8 +197,6 @@ class NvidiaBackend(AIBackend):
     fallback_models = Config.NVIDIA_FALLBACK_MODELS
 
     def chat_with_fallback(self, messages: list[dict], tools: Optional[list[dict]] = None) -> dict:
-        # NVIDIA models emit tool calls in an incompatible format (missing "type" field).
-        # Skip tools entirely and go straight to text-only.
         text_messages = []
         for m in messages:
             if m["role"] in ("tool",):
@@ -197,6 +234,7 @@ class NvidiaBackend(AIBackend):
             timeout=120,
         )
         self._current_model = Config.NVIDIA_MODEL
+        self._models_cache: Optional[list[dict]] = None
 
     @property
     def name(self):
@@ -205,6 +243,27 @@ class NvidiaBackend(AIBackend):
     @property
     def current_model(self):
         return self._current_model
+
+    def available_models(self) -> list[dict]:
+        if self._models_cache is None:
+            try:
+                resp = self._client.get("/models")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    self._models_cache = [
+                        {"id": m["id"], "name": m.get("display_name", m["id"]), "provider": "nvidia"}
+                        for m in data.get("data", [])
+                    ]
+                else:
+                    raise RuntimeError(f"HTTP {resp.status_code}")
+            except Exception:
+                self._models_cache = [
+                    {"id": m, "name": m.replace("meta/", "").replace("mistralai/", "").replace("nvidia/", "").replace("-instruct", "").replace("-ultra", "").replace("-70b", "").replace("-8b", ""), "provider": "nvidia"}
+                    for m in Config.NVIDIA_FALLBACK_MODELS + [Config.NVIDIA_MODEL]
+                ]
+                seen = set()
+                self._models_cache = [m for m in self._models_cache if not (m["id"] in seen or seen.add(m["id"]))]
+        return self._models_cache
 
     def chat(self, messages, tools=None):
         body: dict = {"model": self._current_model, "messages": messages}
@@ -256,6 +315,7 @@ class OllamaBackend(AIBackend):
             api_key="ollama",
         )
         self._current_model = Config.OLLAMA_MODEL
+        self._models_cache: Optional[list[dict]] = None
 
     @property
     def name(self):
@@ -264,6 +324,18 @@ class OllamaBackend(AIBackend):
     @property
     def current_model(self):
         return self._current_model
+
+    def available_models(self) -> list[dict]:
+        if self._models_cache is None:
+            try:
+                resp = self.client.models.list()
+                self._models_cache = [
+                    {"id": m.id, "name": m.id, "provider": "ollama"}
+                    for m in resp
+                ]
+            except Exception:
+                self._models_cache = [{"id": Config.OLLAMA_MODEL, "name": Config.OLLAMA_MODEL, "provider": "ollama"}]
+        return self._models_cache
 
     def chat(self, messages, tools=None):
         kwargs = dict(model=self._current_model, messages=messages)
@@ -337,8 +409,18 @@ class Brain:
         logger.warning("Backend '%s' not available", name)
         return False
 
+    def switch_model(self, backend_name: str, model_id: str) -> bool:
+        backend = self.backends.get(backend_name)
+        if not backend:
+            logger.warning("Backend '%s' not found", backend_name)
+            return False
+        return backend.switch_model(model_id)
+
     def list_backends(self) -> list[str]:
         return list(self.backends.keys())
+
+    def list_all_models(self) -> dict[str, list[dict]]:
+        return {name: be.available_models() for name, be in self.backends.items()}
 
     def chat(self, messages: list[dict], tools: Optional[list[dict]] = None) -> dict:
         backends_to_try = [self._active] + [

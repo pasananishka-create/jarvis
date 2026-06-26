@@ -1,10 +1,11 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import type { ConnectionStatus } from "../types";
+import type { ConnectionStatus, ModelInfo } from "../types";
 
 export function useJarvis() {
   const ws = useRef<WebSocket | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const [backend, setBackend] = useState("unknown");
+  const [models, setModels] = useState<Record<string, ModelInfo[]>>({});
   const onTokenRef = useRef<((token: string) => void) | null>(null);
   const onDoneRef = useRef<((backend: string) => void) | null>(null);
   const onErrorRef = useRef<((error: string) => void) | null>(null);
@@ -19,6 +20,7 @@ export function useJarvis() {
 
     socket.onopen = () => {
       setStatus("connected");
+      socket.send(JSON.stringify({ type: "get_models" }));
     };
 
     socket.onclose = () => {
@@ -42,15 +44,15 @@ export function useJarvis() {
             onDoneRef.current?.(data.backend);
             break;
           case "status":
-            if (data.content === "memory_cleared") {
-              // Memory cleared — UI can react
-            }
             break;
           case "backend_changed":
             if (data.active) setBackend(data.active);
-            if (data.reason) {
-              console.info(`Backend changed: ${data.reason}`);
-            }
+            break;
+          case "model_changed":
+            if (data.active) setBackend(data.active);
+            break;
+          case "models_list":
+            if (data.models) setModels(data.models);
             break;
           case "error":
             onErrorRef.current?.(data.content);
@@ -81,6 +83,17 @@ export function useJarvis() {
     }
   }, []);
 
+  const switchModel = useCallback((backend: string, model: string) => {
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ type: "command", content: `model:${backend}:${model}` }));
+    }
+    // optimistically update models local state
+    setModels((prev) => {
+      if (!prev[backend]) return prev;
+      return { ...prev, [backend]: prev[backend] };
+    });
+  }, []);
+
   const onToken = useCallback((fn: (token: string) => void) => {
     onTokenRef.current = fn;
   }, []);
@@ -93,5 +106,5 @@ export function useJarvis() {
     onErrorRef.current = fn;
   }, []);
 
-  return { status, backend, sendMessage, sendCommand, onToken, onDone, onError };
+  return { status, backend, models, sendMessage, sendCommand, switchModel, onToken, onDone, onError };
 }

@@ -17,6 +17,9 @@ You have access to tools/abilities that let you interact with the world:
 - web_search: Search the web for current information
 - run_command: Execute system commands / open applications
 - run_python: Run Python code snippets
+- record_audio: Record from microphone and transcribe to text
+- speak_text: Speak text aloud through speakers
+- screen_capture: Capture a screenshot of the screen
 
 Guidelines:
 - Use tools whenever you need real-time or external information
@@ -37,7 +40,9 @@ Guidelines:
         from abilities.web_search import WebSearch
         from abilities.system_control import RunCommand
         from abilities.code_helper import RunPython
-        for ability in [WebSearch(), RunCommand(), RunPython()]:
+        from abilities.voice import RecordAudio, SpeakText
+        from abilities.screen_capture import ScreenCapture
+        for ability in [WebSearch(), RunCommand(), RunPython(), RecordAudio(), SpeakText(), ScreenCapture()]:
             self.abilities[ability.name] = ability
 
     def register_ability(self, ability: Ability):

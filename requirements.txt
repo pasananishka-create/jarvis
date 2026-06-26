@@ -8,16 +8,21 @@ rich>=13.0.0
 # Abilities
 duckduckgo_search>=7.0.0
 
+# Voice (optional)
+sounddevice>=0.5.0
+SpeechRecognition>=3.10.0
+pyttsx3>=2.90
+edge-tts>=6.0.0
+numpy>=1.24.0
+
+# Screen capture (optional)
+mss>=9.0.0
+Pillow>=10.0.0
+
 # Server (optional — for API mode)
 # fastapi>=0.100.0
 # uvicorn>=0.23.0
 # websockets>=11.0
 
-# Voice (optional — uncomment if needed)
-# speechrecognition>=3.10.0
-# pyttsx3>=2.90
-# pyaudio>=0.2.13
-# pvporcupine>=3.0.0
-
-# Local AI (optional — uncomment for Ollama)
+# Local AI (optional — for Ollama)
 # ollama>=0.4.0

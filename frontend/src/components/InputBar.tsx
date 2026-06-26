@@ -1,27 +1,69 @@
-import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 interface InputBarProps {
   onSend: (text: string) => void;
   disabled: boolean;
 }
 
+declare global {
+  interface Window {
+    SpeechRecognition?: new () => SpeechRecognition;
+    webkitSpeechRecognition?: new () => SpeechRecognition;
+  }
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+}
+
+interface SpeechRecognitionEvent {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionResultList {
+  [index: number]: SpeechRecognitionResult;
+  length: number;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognitionErrorEvent {
+  error: string;
+  message: string;
+}
+
 export default function InputBar({ onSend, disabled }: InputBarProps) {
   const [text, setText] = useState("");
-  const [focused, setFocused] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [listening, setListening] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
-    if (!disabled && !focused) textareaRef.current?.focus();
-  }, [disabled, focused]);
+    if (!disabled) inputRef.current?.focus();
+  }, [disabled]);
 
-  const adjustHeight = () => {
-    const el = textareaRef.current;
-    if (el) {
-      el.style.height = "auto";
-      el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
-    }
-  };
+  const stopListening = useCallback(() => {
+    try { recognitionRef.current?.stop(); } catch { /* */ }
+    recognitionRef.current = null;
+    setListening(false);
+  }, []);
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -29,85 +71,88 @@ export default function InputBar({ onSend, disabled }: InputBarProps) {
     if (!trimmed || disabled) return;
     onSend(trimmed);
     setText("");
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
+  const toggleMic = useCallback(() => {
+    if (listening) { stopListening(); return; }
+
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+
+    const r = new SR();
+    r.continuous = false;
+    r.interimResults = false;
+    r.lang = "en-US";
+    recognitionRef.current = r;
+    setListening(true);
+
+    r.onresult = (e: SpeechRecognitionEvent) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          const t = e.results[i][0].transcript;
+          setText((prev) => prev ? prev + " " + t : t);
+          stopListening();
+          return;
+        }
+      }
+    };
+    r.onerror = () => stopListening();
+    r.onend = () => { if (listening) stopListening(); };
+    try { r.start(); } catch { stopListening(); }
+  }, [listening, stopListening]);
+
+  useEffect(() => () => stopListening(), [stopListening]);
 
   return (
-    <motion.form
+    <form
       onSubmit={handleSubmit}
-      className="relative z-10 input-glass safe-bottom"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+      className="border-t border-white/[0.06] bg-[#080C10]/90 safe-bottom"
     >
-      <div className="max-w-4xl mx-auto px-2 sm:px-5 py-2 sm:py-3.5 flex gap-1.5 sm:gap-3 items-end">
+      <div className="max-w-3xl mx-auto px-3 sm:px-6 py-2 sm:py-3 flex gap-2 items-center">
         <div className="flex-1 relative">
-          {focused && (
-            <>
-              <div className="absolute -inset-[2px] rounded-xl opacity-40 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(0,212,255,0.2), transparent 30%, transparent 70%, rgba(0,212,255,0.1))", animation: "energyBorder 2s ease-in-out infinite" }} />
-              <div className="absolute -inset-[1px] rounded-xl opacity-20 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(0,100,255,0.15), transparent 50%)", filter: "blur(8px)" }} />
-            </>
-          )}
-          <textarea
-            ref={textareaRef}
+          <input
+            ref={inputRef}
+            type="text"
             value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              adjustHeight();
-            }}
-            onKeyDown={handleKeyDown}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            placeholder="╰▸ Message Jarvis..."
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Message Jarvis..."
             disabled={disabled}
-            rows={1}
-            inputMode="text"
             enterKeyHint="send"
-            className={`w-full bg-white/[0.04] border rounded-xl px-3 sm:px-4 py-3 sm:py-3 pr-10 text-[15px] sm:text-sm text-white/85 placeholder-white/15 focus:outline-none transition-all duration-300 disabled:opacity-30 resize-none overflow-y-auto max-h-[120px] sm:max-h-[140px] leading-relaxed font-sans ${
-              focused
-                ? "border-jarvis/40 bg-white/[0.07] shadow-[0_0_30px_rgba(0,212,255,0.1)]"
-                : "border-white/[0.06] hover:border-white/[0.1]"
-            }`}
+            className="w-full bg-[#0C1018] border border-white/[0.08] rounded-lg px-3 py-2.5 sm:py-3 text-[16px] sm:text-sm text-[#E8F4F8]/85 placeholder-white/12 focus:outline-none focus:border-[#00D4FF]/30 transition-colors disabled:opacity-30 font-sans"
           />
-          <AnimatePresence>
-            {text.length > 0 && (
-              <motion.div
-                className="absolute right-3 bottom-3 text-[9px] font-mono text-white/15 pointer-events-none select-none"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                {text.length}
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
 
-        <motion.button
+        <button
+          type="button"
+          onClick={toggleMic}
+          disabled={disabled}
+          className={`shrink-0 rounded-lg border transition-all flex items-center justify-center min-h-[38px] sm:min-h-[42px] min-w-[38px] sm:min-w-[42px] ${
+            listening
+              ? "bg-red-500/15 border-red-400/40 text-red-400"
+              : "bg-[#0C1018] border-white/[0.08] text-white/30 hover:text-white/55 hover:border-[#00D4FF]/20"
+          }`}
+          title={listening ? "Stop" : "Voice"}
+        >
+          {listening
+            ? <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1.5" /><rect x="14" y="4" width="4" height="16" rx="1.5" /></svg>
+            : <svg className="w-[14px] h-[14px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 11a7 7 0 01-14 0M12 2a5 5 0 00-5 5v4a5 5 0 0010 0V7a5 5 0 00-5-5z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5.5 20.5h13" /></svg>
+          }
+        </button>
+
+        <button
           type="submit"
           disabled={disabled || !text.trim()}
-          className={`shrink-0 rounded-xl border text-jarvis text-sm font-medium disabled:opacity-15 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center min-h-[44px] sm:min-h-[48px] min-w-[44px] sm:min-w-[48px] ${
+          className={`shrink-0 rounded-lg border transition-all flex items-center justify-center min-h-[38px] sm:min-h-[42px] min-w-[38px] sm:min-w-[42px] ${
             text.trim() && !disabled
-              ? "bg-jarvis/15 border-jarvis/40 pulse-border"
-              : "bg-jarvis/10 border-jarvis/25"
-          }`}
-          whileHover={text.trim() && !disabled ? { backgroundColor: "rgba(0, 212, 255, 0.2)", scale: 1.02 } : {}}
-          whileTap={text.trim() && !disabled ? { scale: 0.95 } : {}}
+              ? "bg-[#00D4FF]/10 border-[#00D4FF]/30 text-[#00D4FF]"
+              : "bg-[#0C1018] border-white/[0.08] text-white/15"
+          } disabled:opacity-15 disabled:cursor-not-allowed`}
         >
-          <svg className="w-[18px] h-[18px] sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-[15px] h-[15px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
           </svg>
-        </motion.button>
+        </button>
       </div>
-    </motion.form>
+    </form>
   );
 }
