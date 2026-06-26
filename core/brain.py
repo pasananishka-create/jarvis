@@ -312,10 +312,10 @@ class OllamaBackend(AIBackend):
     fallback_models = [Config.OLLAMA_MODEL]
 
     def __init__(self):
-        from openai import OpenAI
-        self.client = OpenAI(
-            base_url=f"{Config.OLLAMA_HOST}/v1",
-            api_key="ollama",
+        import httpx
+        self._client = httpx.Client(
+            base_url=Config.OLLAMA_HOST,
+            timeout=120,
         )
         self._current_model = Config.OLLAMA_MODEL
         self._models_cache: Optional[list[dict]] = None
@@ -331,43 +331,41 @@ class OllamaBackend(AIBackend):
     def available_models(self) -> list[dict]:
         if self._models_cache is None:
             try:
-                resp = self.client.models.list()
-                self._models_cache = [
-                    {"id": m.id, "name": m.id, "provider": "ollama"}
-                    for m in resp
-                ]
+                resp = self._client.get("/api/tags")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    self._models_cache = [
+                        {"id": m["name"], "name": m["name"], "provider": "ollama"}
+                        for m in data.get("models", [])
+                    ]
+                else:
+                    raise RuntimeError(f"HTTP {resp.status_code}")
             except Exception:
                 self._models_cache = [{"id": Config.OLLAMA_MODEL, "name": Config.OLLAMA_MODEL, "provider": "ollama"}]
         return self._models_cache
 
     def chat(self, messages, tools=None):
-        kwargs = dict(model=self._current_model, messages=messages)
+        body: dict = {"model": self._current_model, "messages": messages, "stream": False}
         if tools:
-            simplified = []
-            for t in tools:
-                fn = t["function"]
-                simplified.append({
+            body["tools"] = [
+                {
                     "type": "function",
                     "function": {
-                        "name": fn["name"],
-                        "description": fn.get("description", ""),
-                        "parameters": fn["parameters"],
+                        "name": t["function"]["name"],
+                        "description": t["function"].get("description", ""),
+                        "parameters": t["function"]["parameters"],
                     },
-                })
-            kwargs["tools"] = simplified
-            kwargs["tool_choice"] = "auto"
-
-        resp = self.client.chat.completions.create(**kwargs)
-        msg = resp.choices[0].message
-        result = {"role": "assistant", "content": msg.content or ""}
-        if msg.tool_calls:
-            result["tool_calls"] = [
-                {
-                    "id": tc.id,
-                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
                 }
-                for tc in msg.tool_calls
+                for t in tools
             ]
+
+        resp = self._client.post("/api/chat", json=body)
+        if resp.status_code != 200:
+            raise RuntimeError(f"Ollama API error: {resp.status_code} - {resp.text[:500]}")
+
+        data = resp.json()
+        msg = data.get("message", {})
+        result = {"role": "assistant", "content": msg.get("content") or ""}
         return result
 
 

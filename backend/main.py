@@ -179,16 +179,19 @@ async def websocket_endpoint(websocket: WebSocket):
 
             elif msg.get("type") == "get_models":
                 try:
+                    backends = assistant.brain.list_backends()
                     models = assistant.brain.list_all_models()
                     await websocket.send_json({
                         "type": "models_list",
                         "models": models,
+                        "backends": backends,
                     })
                 except Exception as e:
                     logger.error("Failed to list models: %s", e)
                     await websocket.send_json({
                         "type": "models_list",
                         "models": {},
+                        "backends": [],
                     })
 
     except WebSocketDisconnect:

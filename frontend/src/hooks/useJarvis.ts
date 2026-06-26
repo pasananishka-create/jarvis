@@ -65,7 +65,16 @@ export function useJarvis() {
             }
             break;
           case "models_list":
-            if (data.models) setModels(data.models);
+            if (data.models) {
+              const m = { ...data.models };
+              // Ensure every backend from the server has at least an entry
+              if (data.backends) {
+                for (const bk of data.backends) {
+                  if (!m[bk]) m[bk] = [];
+                }
+              }
+              setModels(m);
+            }
             break;
           case "error":
             onErrorRef.current?.(data.content);
