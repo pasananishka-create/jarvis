@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  NODE_OPTIONS: "--no-deprecation"
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,10 +23,11 @@ jobs:
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Frontend
-        env:
-          NODE_OPTIONS: "--no-deprecation"
-        run: npm ci && npm run build && npx cap sync android
+      - name: Build frontend
+        run: |
+          npm ci
+          npm run build
+          npx cap sync android
         working-directory: frontend
 
       - uses: actions/setup-java@v4
@@ -31,28 +35,29 @@ jobs:
           distribution: "temurin"
           java-version: "21"
 
-      - uses: android-actions/setup-android@v3
-
-      - name: Install SDK
-        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_HOME "platforms;android-36" "build-tools;36.0.0"
+      - uses: android-actions/setup-android@v4
 
       - name: Build APK
-        env:
-          NODE_OPTIONS: "--no-deprecation"
         run: |
           cd frontend/android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon 2>&1
+          ./gradlew assembleDebug --no-daemon
 
-      - name: Publish to GitHub Releases
+      - name: Publish APK to GitHub Releases
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          APK="frontend/android/app/build/outputs/apk/debug/app-debug.apk"
+          if [ ! -f "$APK" ]; then
+            echo "::error::APK not found at $APK"
+            exit 1
+          fi
+          echo "APK size: $(stat -c%s "$APK") bytes"
+          gh release delete latest --yes 2>/dev/null || true
+          git push --delete origin latest 2>/dev/null || true
           gh release create latest \
             --title "J.A.R.V.I.S. APK" \
-            --notes "Auto-built from \`main\` branch — [Download APK](https://github.com/${{ github.repository }}/releases/download/latest/app-debug.apk)" \
-            --latest \
-            2>/dev/null || true
-          gh release upload latest \
-            frontend/android/app/build/outputs/apk/debug/app-debug.apk \
-            --clobber
+            --notes "Auto-built from commit \`${{ github.sha }}\` on \`main\` branch." \
+            --latest
+          gh release upload latest "$APK" --clobber
+          echo "::notice::APK published! Download: https://github.com/${{ github.repository }}/releases/latest"
