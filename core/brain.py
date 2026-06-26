@@ -379,14 +379,17 @@ class Brain:
 
     def _init_backends(self):
         for name in Config.BACKEND_PRIORITY:
-            if name == "openai" and Config.OPENAI_API_KEY:
-                self.backends["openai"] = OpenAIBackend()
-            elif name == "anthropic" and Config.ANTHROPIC_API_KEY:
-                self.backends["anthropic"] = AnthropicBackend()
-            elif name == "nvidia" and Config.NVIDIA_API_KEY:
-                self.backends["nvidia"] = NvidiaBackend()
-            elif name == "ollama":
-                self.backends["ollama"] = OllamaBackend()
+            try:
+                if name == "openai" and Config.OPENAI_API_KEY:
+                    self.backends["openai"] = OpenAIBackend()
+                elif name == "anthropic" and Config.ANTHROPIC_API_KEY:
+                    self.backends["anthropic"] = AnthropicBackend()
+                elif name == "nvidia" and Config.NVIDIA_API_KEY:
+                    self.backends["nvidia"] = NvidiaBackend()
+                elif name == "ollama":
+                    self.backends["ollama"] = OllamaBackend()
+            except Exception as e:
+                logger.warning("Failed to init backend '%s': %s", name, e)
 
         for name in Config.BACKEND_PRIORITY:
             if name in self.backends:
@@ -423,7 +426,14 @@ class Brain:
         return list(self.backends.keys())
 
     def list_all_models(self) -> dict[str, list[dict]]:
-        return {name: be.available_models() for name, be in self.backends.items()}
+        result = {}
+        for name, be in self.backends.items():
+            try:
+                result[name] = be.available_models()
+            except Exception as e:
+                logger.warning("Failed to fetch models for %s: %s", name, e)
+                result[name] = []
+        return result
 
     def chat(self, messages: list[dict], tools: Optional[list[dict]] = None) -> dict:
         backends_to_try = [self._active] + [

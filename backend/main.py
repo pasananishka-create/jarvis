@@ -138,17 +138,19 @@ async def websocket_endpoint(websocket: WebSocket):
 
             if msg.get("type") == "message":
                 user_text = msg.get("content", "")
-                await websocket.send_json({"type": "status", "content": "thinking"})
+                try:
+                    response = await assistant.process_message(user_text)
 
-                response = await assistant.process_message(user_text)
+                    chunk_size = 5
+                    for i in range(0, len(response), chunk_size):
+                        chunk = response[i : i + chunk_size]
+                        await websocket.send_json({"type": "token", "content": chunk})
+                        await asyncio.sleep(0.015)
 
-                chunk_size = 5
-                for i in range(0, len(response), chunk_size):
-                    chunk = response[i : i + chunk_size]
-                    await websocket.send_json({"type": "token", "content": chunk})
-                    await asyncio.sleep(0.015)
-
-                await websocket.send_json({"type": "done", "backend": assistant.brain.active_name})
+                    await websocket.send_json({"type": "done", "backend": assistant.brain.active_name})
+                except Exception as e:
+                    logger.error("Message processing error: %s", e)
+                    await websocket.send_json({"type": "error", "content": f"Processing error: {e}"})
 
             elif msg.get("type") == "command":
                 cmd = msg.get("content", "")
@@ -176,11 +178,18 @@ async def websocket_endpoint(websocket: WebSocket):
                         })
 
             elif msg.get("type") == "get_models":
-                models = assistant.brain.list_all_models()
-                await websocket.send_json({
-                    "type": "models_list",
-                    "models": models,
-                })
+                try:
+                    models = assistant.brain.list_all_models()
+                    await websocket.send_json({
+                        "type": "models_list",
+                        "models": models,
+                    })
+                except Exception as e:
+                    logger.error("Failed to list models: %s", e)
+                    await websocket.send_json({
+                        "type": "models_list",
+                        "models": {},
+                    })
 
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected")
