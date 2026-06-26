@@ -1,4 +1,5 @@
 import logging
+import time
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -8,6 +9,8 @@ logger = logging.getLogger("jarvis.brain")
 
 
 class AIBackend(ABC):
+    fallback_models: list[str] = []
+
     @abstractmethod
     def chat(self, messages: list[dict], tools: Optional[list[dict]] = None) -> dict:
         ...
@@ -17,18 +20,39 @@ class AIBackend(ABC):
     def name(self) -> str:
         ...
 
+    def chat_with_fallback(self, messages: list[dict], tools: Optional[list[dict]] = None) -> dict:
+        models_to_try = self.fallback_models or [self._current_model]
+        last_error = None
+        for model in models_to_try:
+            try:
+                self._current_model = model
+                logger.info("Trying %s with model %s", self.__class__.__name__, model)
+                return self.chat(messages, tools)
+            except Exception as e:
+                last_error = e
+                logger.warning("Model %s failed: %s", model, e)
+                continue
+        raise last_error or RuntimeError(f"{self.__class__.__name__}: all models exhausted")
+
 
 class OpenAIBackend(AIBackend):
+    fallback_models = [Config.OPENAI_MODEL]
+
     def __init__(self):
         from openai import OpenAI
         self.client = OpenAI(api_key=Config.OPENAI_API_KEY)
+        self._current_model = Config.OPENAI_MODEL
 
     @property
     def name(self):
-        return f"openai ({Config.OPENAI_MODEL})"
+        return f"openai ({self._current_model})"
+
+    @property
+    def current_model(self):
+        return self._current_model
 
     def chat(self, messages, tools=None):
-        kwargs = dict(model=Config.OPENAI_MODEL, messages=messages)
+        kwargs = dict(model=self._current_model, messages=messages)
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = "auto"
@@ -47,13 +71,20 @@ class OpenAIBackend(AIBackend):
 
 
 class AnthropicBackend(AIBackend):
+    fallback_models = [Config.ANTHROPIC_MODEL]
+
     def __init__(self):
         import anthropic
         self.client = anthropic.Anthropic(api_key=Config.ANTHROPIC_API_KEY)
+        self._current_model = Config.ANTHROPIC_MODEL
 
     @property
     def name(self):
-        return f"anthropic ({Config.ANTHROPIC_MODEL})"
+        return f"anthropic ({self._current_model})"
+
+    @property
+    def current_model(self):
+        return self._current_model
 
     def chat(self, messages, tools=None):
         system = None
@@ -65,7 +96,7 @@ class AnthropicBackend(AIBackend):
                 api_messages.append({"role": m["role"], "content": m["content"]})
 
         kwargs = dict(
-            model=Config.ANTHROPIC_MODEL,
+            model=self._current_model,
             max_tokens=4096,
             messages=api_messages,
         )
@@ -100,19 +131,26 @@ class AnthropicBackend(AIBackend):
 
 
 class NvidiaBackend(AIBackend):
+    fallback_models = Config.NVIDIA_FALLBACK_MODELS
+
     def __init__(self):
         from openai import OpenAI
         self.client = OpenAI(
             base_url=Config.NVIDIA_BASE_URL,
             api_key=Config.NVIDIA_API_KEY,
         )
+        self._current_model = Config.NVIDIA_MODEL
 
     @property
     def name(self):
-        return f"nvidia ({Config.NVIDIA_MODEL})"
+        return f"nvidia ({self._current_model})"
+
+    @property
+    def current_model(self):
+        return self._current_model
 
     def chat(self, messages, tools=None):
-        kwargs = dict(model=Config.NVIDIA_MODEL, messages=messages)
+        kwargs = dict(model=self._current_model, messages=messages)
         if tools:
             simplified = []
             for t in tools:
@@ -143,19 +181,26 @@ class NvidiaBackend(AIBackend):
 
 
 class OllamaBackend(AIBackend):
+    fallback_models = [Config.OLLAMA_MODEL]
+
     def __init__(self):
         from openai import OpenAI
         self.client = OpenAI(
             base_url=f"{Config.OLLAMA_HOST}/v1",
             api_key="ollama",
         )
+        self._current_model = Config.OLLAMA_MODEL
 
     @property
     def name(self):
-        return f"ollama ({Config.OLLAMA_MODEL})"
+        return f"ollama ({self._current_model})"
+
+    @property
+    def current_model(self):
+        return self._current_model
 
     def chat(self, messages, tools=None):
-        kwargs = dict(model=Config.OLLAMA_MODEL, messages=messages)
+        kwargs = dict(model=self._current_model, messages=messages)
         if tools:
             simplified = []
             for t in tools:
@@ -192,22 +237,22 @@ class Brain:
         self._init_backends()
 
     def _init_backends(self):
-        if Config.OPENAI_API_KEY:
-            self.backends["openai"] = OpenAIBackend()
-        if Config.ANTHROPIC_API_KEY:
-            self.backends["anthropic"] = AnthropicBackend()
-        if Config.NVIDIA_API_KEY:
-            self.backends["nvidia"] = NvidiaBackend()
-        self.backends["ollama"] = OllamaBackend()
+        for name in Config.BACKEND_PRIORITY:
+            if name == "openai" and Config.OPENAI_API_KEY:
+                self.backends["openai"] = OpenAIBackend()
+            elif name == "anthropic" and Config.ANTHROPIC_API_KEY:
+                self.backends["anthropic"] = AnthropicBackend()
+            elif name == "nvidia" and Config.NVIDIA_API_KEY:
+                self.backends["nvidia"] = NvidiaBackend()
+            elif name == "ollama":
+                self.backends["ollama"] = OllamaBackend()
 
-        if "openai" in self.backends:
-            self._active = "openai"
-        elif "nvidia" in self.backends:
-            self._active = "nvidia"
-        elif "anthropic" in self.backends:
-            self._active = "anthropic"
-        else:
-            self._active = "ollama"
+        for name in Config.BACKEND_PRIORITY:
+            if name in self.backends:
+                self._active = name
+                break
+        if not self._active and self.backends:
+            self._active = list(self.backends.keys())[0]
 
     @property
     def active(self) -> AIBackend:
@@ -215,12 +260,13 @@ class Brain:
 
     @property
     def active_name(self) -> str:
-        return self.active.name
+        b = self.active
+        return f"{self._active} ({getattr(b, 'current_model', 'unknown')})"
 
     def switch_to(self, name: str) -> bool:
         if name in self.backends:
             self._active = name
-            logger.info("Switched to %s backend: %s", name, self.active.name)
+            logger.info("Switched to backend: %s", self.active_name)
             return True
         logger.warning("Backend '%s' not available", name)
         return False
@@ -229,4 +275,20 @@ class Brain:
         return list(self.backends.keys())
 
     def chat(self, messages: list[dict], tools: Optional[list[dict]] = None) -> dict:
-        return self.active.chat(messages, tools)
+        backends_to_try = [self._active] + [
+            n for n in Config.BACKEND_PRIORITY if n in self.backends and n != self._active
+        ]
+        last_error = None
+        for name in backends_to_try:
+            backend = self.backends[name]
+            try:
+                result = backend.chat_with_fallback(messages, tools)
+                if name != self._active:
+                    logger.info("Auto-fellback from %s to %s", self._active, name)
+                    self._active = name
+                return result
+            except Exception as e:
+                last_error = e
+                logger.error("Backend %s completely failed: %s", name, e)
+                continue
+        raise last_error or RuntimeError("All backends exhausted")

@@ -48,6 +48,9 @@ export function useJarvis() {
             break;
           case "backend_changed":
             if (data.active) setBackend(data.active);
+            if (data.reason) {
+              console.info(`Backend changed: ${data.reason}`);
+            }
             break;
           case "error":
             onErrorRef.current?.(data.content);
