@@ -6,9 +6,17 @@ export function useJarvis() {
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
   const [backend, setBackend] = useState("unknown");
   const [models, setModels] = useState<Record<string, ModelInfo[]>>({});
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const onTokenRef = useRef<((token: string) => void) | null>(null);
   const onDoneRef = useRef<((backend: string) => void) | null>(null);
   const onErrorRef = useRef<((error: string) => void) | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const showToast = useCallback((message: string, type: "success" | "error") => {
+    setToast({ message, type });
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
+  }, []);
 
   const connect = useCallback(() => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -43,26 +51,32 @@ export function useJarvis() {
             if (data.backend) setBackend(data.backend);
             onDoneRef.current?.(data.backend);
             break;
-          case "status":
-            break;
           case "backend_changed":
             if (data.active) setBackend(data.active);
             break;
           case "model_changed":
-            if (data.active) setBackend(data.active);
+            if (data.active) {
+              setBackend(data.active);
+              if (data.success) {
+                showToast(`Model switched`, "success");
+              } else {
+                showToast(`Failed to switch model`, "error");
+              }
+            }
             break;
           case "models_list":
             if (data.models) setModels(data.models);
             break;
           case "error":
             onErrorRef.current?.(data.content);
+            showToast(data.content || "Connection error", "error");
             break;
         }
       } catch {
         // ignore
       }
     };
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     connect();
@@ -83,15 +97,12 @@ export function useJarvis() {
     }
   }, []);
 
-  const switchModel = useCallback((backend: string, model: string) => {
+  const switchModel = useCallback((backendName: string, modelId: string) => {
     if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ type: "command", content: `model:${backend}:${model}` }));
+      ws.current.send(
+        JSON.stringify({ type: "command", content: `model:${backendName}:${modelId}` })
+      );
     }
-    // optimistically update models local state
-    setModels((prev) => {
-      if (!prev[backend]) return prev;
-      return { ...prev, [backend]: prev[backend] };
-    });
   }, []);
 
   const onToken = useCallback((fn: (token: string) => void) => {
@@ -106,5 +117,7 @@ export function useJarvis() {
     onErrorRef.current = fn;
   }, []);
 
-  return { status, backend, models, sendMessage, sendCommand, switchModel, onToken, onDone, onError };
+  const dismissToast = useCallback(() => setToast(null), []);
+
+  return { status, backend, models, toast, sendMessage, sendCommand, switchModel, onToken, onDone, onError, dismissToast };
 }

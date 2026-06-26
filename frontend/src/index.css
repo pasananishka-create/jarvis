@@ -4,14 +4,15 @@
   --color-jarvis: #00D4FF;
   --color-jarvis-dark: #0099CC;
   --color-jarvis-deep: #005577;
-  --color-bg-deep: #080C10;
-  --color-bg-dark: #0C1018;
-  --color-bg-surface: rgba(12, 16, 24, 0.8);
+  --color-jarvis-accent: #00FF9C;
+  --color-bg-deep: #000000;
+  --color-bg-dark: #080C10;
+  --color-bg-surface: rgba(8, 12, 16, 0.8);
   --color-text-primary: #E8F4F8;
   --color-text-secondary: rgba(232, 244, 248, 0.6);
   --color-text-muted: rgba(232, 244, 248, 0.3);
-  --font-sans: "Inter", "SF Pro Display", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-mono: "SF Mono", "Cascadia Code", "Fira Code", "JetBrains Mono", monospace;
+  --font-sans: "Inter", "SF Pro Display", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
 }
 
 * {
@@ -24,26 +25,23 @@
 html, body, #root {
   height: 100%;
   overflow: hidden;
-  background: #080C10;
+  background: #000000;
   color: #E8F4F8;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar */
+/* OLED true black + scroll */
 ::-webkit-scrollbar {
-  width: 3px;
+  width: 2px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 212, 255, 0.12);
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 212, 255, 0.25);
+  background: rgba(0, 212, 255, 0.1);
+  border-radius: 1px;
 }
 
 /* Selection */
@@ -58,6 +56,12 @@ html, body, #root {
 }
 @supports (padding-top: env(safe-area-inset-top)) {
   .safe-top { padding-top: env(safe-area-inset-top, 0px); }
+}
+@supports (padding-left: env(safe-area-inset-left)) {
+  .safe-left { padding-left: env(safe-area-inset-left, 0px); }
+}
+@supports (padding-right: env(safe-area-inset-right)) {
+  .safe-right { padding-right: env(safe-area-inset-right, 0px); }
 }
 
 /* Reduced motion */
@@ -82,6 +86,20 @@ html, body, #root {
   }
 
   button, a, select {
-    min-height: 40px;
+    min-height: 48px;
   }
+}
+
+/* Glow utility (GPU-composited: transform/opacity only) */
+.glow-jarvis {
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.15);
+}
+.glow-accent {
+  box-shadow: 0 0 12px rgba(0, 255, 156, 0.15);
+}
+
+/* GPU compositing hint */
+.gpu-layer {
+  transform: translateZ(0);
+  will-change: transform, opacity;
 }

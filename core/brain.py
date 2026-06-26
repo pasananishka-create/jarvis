@@ -30,12 +30,15 @@ class AIBackend(ABC):
         ...
 
     def switch_model(self, model_id: str) -> bool:
-        if model_id in [m["id"] for m in self.available_models()]:
+        available = [m["id"] for m in self.available_models()]
+        if model_id in available:
             self._current_model = model_id
             logger.info("%s switched to model: %s", self.__class__.__name__, model_id)
             return True
-        logger.warning("Model '%s' not found in %s", model_id, self.__class__.__name__)
-        return False
+        # Allow switching even if not in API list (custom/local models)
+        logger.warning("Model '%s' not in API list, trying anyway", model_id)
+        self._current_model = model_id
+        return True
 
     def chat_with_fallback(self, messages: list[dict], tools: Optional[list[dict]] = None) -> dict:
         models_to_try = self.fallback_models or [self._current_model]

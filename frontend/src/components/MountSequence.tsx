@@ -48,7 +48,7 @@ export default function MountSequence({ onComplete }: MountSequenceProps) {
     <AnimatePresence>
       {phase !== "done" && (
         <motion.div
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#080C10]"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black"
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4 }}
         >

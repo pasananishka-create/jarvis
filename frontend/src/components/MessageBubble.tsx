@@ -21,35 +21,16 @@ export default function MessageBubble({ message, index }: MessageBubbleProps) {
       }}
     >
       <div
-        className={`rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 max-w-[88%] sm:max-w-[78%] md:max-w-[68%] ${
+        className={`${
           isUser
-            ? "bg-[#00D4FF]/8 border border-[#00D4FF]/15 text-[#E8F4F8]"
-            : "border border-white/[0.06] text-[#E8F4F8]/85"
-        }`}
-        style={{
-          transition: "box-shadow 0.2s ease",
-        }}
-        onMouseEnter={(e) => {
-          if (isUser) {
-            (e.currentTarget as HTMLElement).style.boxShadow = "0 0 12px rgba(0, 212, 255, 0.08)";
-          } else {
-            (e.currentTarget as HTMLElement).style.boxShadow = "0 0 8px rgba(0, 212, 255, 0.04)";
-          }
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLElement).style.boxShadow = "none";
-        }}
+            ? "bg-[#00D4FF]/6 border-l-2 border-[#00D4FF]/30 text-[#E8F4F8]"
+            : "text-[#E8F4F8]/85"
+        } px-3 sm:px-4 py-2 sm:py-2.5 max-w-[88%] sm:max-w-[78%] md:max-w-[72%]`}
       >
         {!isUser && (
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[8px] font-mono tracking-[0.15em] text-[#00D4FF]/40 uppercase">
-              Jarvis
-            </span>
-            <span className="text-[7px] font-mono text-white/10">
-              {new Date(message.timestamp).toLocaleTimeString("en-US", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+            <span className="text-[8px] font-mono tracking-[0.1em] text-[#00D4FF]/35">
+              J.A.R.V.I.S. &gt;
             </span>
           </div>
         )}

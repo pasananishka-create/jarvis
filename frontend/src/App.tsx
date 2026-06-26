@@ -8,7 +8,7 @@ export default function App() {
   const { keyboardHeight } = useVisualViewport();
 
   return (
-    <div className="h-full flex flex-col relative overflow-hidden bg-[#080C10]">
+    <div className="h-full flex flex-col overflow-hidden bg-black">
       {showSplash && (
         <MountSequence onComplete={() => setShowSplash(false)} />
       )}
