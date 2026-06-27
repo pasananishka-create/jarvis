@@ -25,3 +25,6 @@ frontend/*.tsbuildinfo
 # IDE
 .vscode/
 .idea/
+
+# cloned repo
+JARVIS_clone/
