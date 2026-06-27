@@ -288,7 +288,7 @@ function SuggestionChips({ onSelect }: { onSelect: (text: string) => void }) {
 }
 
 export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }) {
-  const { status, backend, models, toast, sendMessage, sendCommand, switchModel, onToken, onDone, onError, dismissToast, setBackendUrl } = useJarvis();
+  const { status, backend, models, toast, sendMessage, sendCommand, onToken, onDone, onError, dismissToast } = useJarvis();
   const [messages, setMessages] = useState<Message[]>([]);
   const [streamingText, setStreamingText] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -365,16 +365,6 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
     sendCommand("clear");
   }, [sendCommand]);
 
-  const handleSwitchBackend = useCallback(
-    (name: string) => sendCommand(`backend:${name}`),
-    [sendCommand]
-  );
-
-  const handleSwitchModel = useCallback(
-    (backendName: string, modelId: string) => switchModel(backendName, modelId),
-    [switchModel]
-  );
-
   useEffect(() => {
     if (thinking && !streamingText) {
       setChatState("processing");
@@ -405,11 +395,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
       <Header
         status={status}
         backendInfo={backendInfo}
-        models={models}
         onClear={handleClear}
-        onSwitchBackend={handleSwitchBackend}
-        onSwitchModel={handleSwitchModel}
-        onSetBackendUrl={setBackendUrl}
       />
 
       <div className="flex-1 flex flex-col min-h-0 relative">

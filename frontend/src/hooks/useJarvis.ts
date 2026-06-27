@@ -2,6 +2,18 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import type { ConnectionStatus, ModelInfo } from "../types";
 import { directChat, getConfig, saveConfig, hasAnyKey, type DirectConfig } from "../lib/directAi";
 
+function autoUrls(): string[] {
+  const urls: string[] = [];
+  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+  // Current host (works in dev with Vite proxy, or when backend is same host)
+  urls.push(`${proto}//${window.location.host}/ws`);
+  // Localhost dev server
+  urls.push("ws://localhost:8000/ws");
+  // LAN common IPs (quick scan common subnets)
+  urls.push("ws://127.0.0.1:8000/ws");
+  return urls;
+}
+
 export function useJarvis() {
   const ws = useRef<WebSocket | null>(null);
   const [status, setStatus] = useState<ConnectionStatus>("connecting");
@@ -13,7 +25,6 @@ export function useJarvis() {
   const onErrorRef = useRef<((error: string) => void) | null>(null);
   const historyRef = useRef<{ role: string; content: string }[]>([]);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -21,97 +32,96 @@ export function useJarvis() {
     toastTimer.current = setTimeout(() => setToast(null), 3000);
   }, []);
 
-  const connect = useCallback(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.host;
-    const stored = typeof window !== "undefined" ? localStorage.getItem("jarvis_ws_url") : null;
-    const url = import.meta.env.VITE_WS_URL || stored || `${protocol}//${host}/ws`;
-
-    const socket = new WebSocket(url);
-    ws.current = socket;
-
-    socket.onopen = () => {
-      setStatus("connected");
-      socket.send(JSON.stringify({ type: "get_models" }));
-    };
-
-    socket.onclose = () => {
-      const cfg = getConfig();
-      if (hasAnyKey()) {
-        setStatus("direct");
-        setBackend(`direct (${cfg.activeProvider})`);
-        buildDirectModels(cfg);
-      } else {
-        setStatus("disconnected");
-        reconnectTimer.current = setTimeout(() => connect(), 3000);
-      }
-    };
-
-    socket.onerror = () => {
-      const cfg = getConfig();
-      if (hasAnyKey()) {
-        setStatus("direct");
-        setBackend(`direct (${cfg.activeProvider})`);
-        buildDirectModels(cfg);
-      } else {
-        setStatus("disconnected");
-      }
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        switch (data.type) {
-          case "token":
-            onTokenRef.current?.(data.content);
-            break;
-          case "done":
-            if (data.backend) setBackend(data.backend);
-            onDoneRef.current?.(data.backend);
-            break;
-          case "backend_changed":
-            if (data.active) setBackend(data.active);
-            break;
-          case "model_changed":
-            if (data.active) {
-              setBackend(data.active);
-              showToast(data.success ? "Model switched" : "Failed to switch model", data.success ? "success" : "error");
-            }
-            break;
-          case "models_list":
-            if (data.models) {
-              const m = { ...data.models };
-              if (data.backends) {
-                for (const bk of data.backends) {
-                  if (!m[bk]) m[bk] = [];
-                }
-              }
-              setModels(m);
-            }
-            break;
-          case "error":
-            onErrorRef.current?.(data.content);
-            showToast(data.content || "Connection error", "error");
-            break;
-        }
-      } catch {
-        // ignore
-      }
-    };
-  }, [showToast]);
-
   function buildDirectModels(cfg: DirectConfig) {
     const m: Record<string, ModelInfo[]> = {};
     m[cfg.activeProvider] = [{ id: cfg.activeModel, name: cfg.activeModel, provider: cfg.activeProvider }];
     setModels(m);
   }
 
+  function fallbackToDirect() {
+    const cfg = getConfig();
+    if (hasAnyKey()) {
+      setStatus("direct");
+      setBackend(`direct (${cfg.activeProvider})`);
+      buildDirectModels(cfg);
+    } else {
+      setStatus("disconnected");
+    }
+  }
+
+  const connect = useCallback(() => {
+    const urls = autoUrls();
+    let index = 0;
+
+    function tryNext() {
+      if (index >= urls.length) {
+        fallbackToDirect();
+        return;
+      }
+      const url = urls[index++];
+      const socket = new WebSocket(url);
+      ws.current = socket;
+
+      socket.onopen = () => {
+        setStatus("connected");
+        socket.send(JSON.stringify({ type: "get_models" }));
+      };
+
+      socket.onclose = () => {
+        // Only try next URL if this wasn't a successful connection
+        tryNext();
+      };
+
+      socket.onerror = () => {
+        socket.close();
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          switch (data.type) {
+            case "token":
+              onTokenRef.current?.(data.content);
+              break;
+            case "done":
+              if (data.backend) setBackend(data.backend);
+              onDoneRef.current?.(data.backend);
+              break;
+            case "backend_changed":
+              if (data.active) setBackend(data.active);
+              break;
+            case "model_changed":
+              if (data.active) {
+                setBackend(data.active);
+                showToast(data.success ? "Model switched" : "Failed to switch model", data.success ? "success" : "error");
+              }
+              break;
+            case "models_list":
+              if (data.models) {
+                const m = { ...data.models };
+                if (data.backends) {
+                  for (const bk of data.backends) {
+                    if (!m[bk]) m[bk] = [];
+                  }
+                }
+                setModels(m);
+              }
+              break;
+            case "error":
+              onErrorRef.current?.(data.content);
+              showToast(data.content || "Connection error", "error");
+              break;
+          }
+        } catch { /* ignore */ }
+      };
+    }
+
+    tryNext();
+  }, [showToast]);
+
   useEffect(() => {
     connect();
-    return () => {
-      ws.current?.close();
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-    };
+    return () => { ws.current?.close(); };
   }, [connect]);
 
   const sendMessage = useCallback((text: string) => {
@@ -121,7 +131,7 @@ export function useJarvis() {
       return;
     }
     if (!hasAnyKey()) {
-      onErrorRef.current?.("No API keys configured. Open Settings to add one.");
+      onErrorRef.current?.("No API keys in Settings. Tap ⚙️ to add one.");
       showToast("No API key configured", "error");
       return;
     }
@@ -130,7 +140,6 @@ export function useJarvis() {
     const errorCb = onErrorRef.current;
     if (!tokenCb) return;
 
-    // Build message history
     const msgs = [...historyRef.current, { role: "user" as const, content: text }];
 
     (async () => {
@@ -140,13 +149,11 @@ export function useJarvis() {
           full += chunk;
           tokenCb(chunk);
         }
-        // Store in history
         historyRef.current = [
           ...historyRef.current,
           { role: "user", content: text },
           { role: "assistant", content: full },
         ];
-        // Keep last 20 messages to avoid context overflow
         if (historyRef.current.length > 40) {
           historyRef.current = historyRef.current.slice(-40);
         }
@@ -165,10 +172,7 @@ export function useJarvis() {
       ws.current.send(JSON.stringify({ type: "command", content: cmd }));
       return;
     }
-    if (cmd === "clear") {
-      historyRef.current = [];
-      return;
-    }
+    if (cmd === "clear") { historyRef.current = []; return; }
     if (cmd.startsWith("model:") || cmd.startsWith("backend:")) {
       if (cmd.startsWith("model:")) {
         const parts = cmd.split(":");
@@ -217,13 +221,5 @@ export function useJarvis() {
 
   const dismissToast = useCallback(() => setToast(null), []);
 
-  const setBackendUrl = useCallback((url: string) => {
-    try {
-      localStorage.setItem("jarvis_ws_url", url);
-      ws.current?.close();
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-    } catch { /* */ }
-  }, []);
-
-  return { status, backend, models, toast, sendMessage, sendCommand, switchModel, onToken, onDone, onError, dismissToast, setBackendUrl };
+  return { status, backend, models, toast, sendMessage, sendCommand, switchModel, onToken, onDone, onError, dismissToast };
 }
