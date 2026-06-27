@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      ws_url:
+        description: "WebSocket URL for backend (default: ws://10.0.2.2:8000/ws for emulator)"
+        required: false
+        default: "ws://10.0.2.2:8000/ws"
 
 env:
   NODE_OPTIONS: "--no-deprecation"
@@ -24,6 +29,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Build frontend
+        env:
+          VITE_WS_URL: ${{ github.event.inputs.ws_url || 'ws://10.0.2.2:8000/ws' }}
         run: |
           npm ci
           npm run build

@@ -14,9 +14,7 @@ export default function App() {
       )}
 
       {!showSplash && (
-        <div className="flex flex-1 overflow-hidden">
-          <Chat keyboardHeight={keyboardHeight} />
-        </div>
+        <Chat keyboardHeight={keyboardHeight} />
       )}
     </div>
   );

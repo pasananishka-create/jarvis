@@ -21,7 +21,7 @@ export function useJarvis() {
   const connect = useCallback(() => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
-    const url = `${protocol}//${host}/ws`;
+    const url = import.meta.env.VITE_WS_URL || `${protocol}//${host}/ws`;
 
     const socket = new WebSocket(url);
     ws.current = socket;

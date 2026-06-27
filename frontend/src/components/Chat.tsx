@@ -241,7 +241,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
   }, [thinking, streamingText, messages.length]);
 
   const hasMessages = messages.length > 0;
-  const showCentral = !hasMessages || (hasMessages && !thinking);
+  const showCentral = !hasMessages;
   const keyboardOpen = keyboardHeight > 0 || inputFocused;
 
   const backendInfo: BackendInfo = {
@@ -251,7 +251,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
   };
 
   return (
-    <div className="flex flex-col h-full bg-black" style={{ paddingBottom: keyboardHeight }}>
+    <div className="flex flex-col flex-1 min-h-0 bg-black" style={{ paddingBottom: keyboardHeight }}>
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} onDismiss={dismissToast} />}
       </AnimatePresence>
