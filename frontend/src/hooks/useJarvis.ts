@@ -12,6 +12,7 @@ export function useJarvis() {
   const onDoneRef = useRef<((backend: string) => void) | null>(null);
   const onErrorRef = useRef<((error: string) => void) | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -38,13 +39,10 @@ export function useJarvis() {
       if (hasAnyKey()) {
         setStatus("direct");
         setBackend(`direct (${cfg.activeProvider})`);
-        // Build a virtual models list from config
-        const m: Record<string, ModelInfo[]> = {};
-        m[cfg.activeProvider] = [{ id: cfg.activeModel, name: cfg.activeModel, provider: cfg.activeProvider }];
-        setModels(m);
+        buildDirectModels(cfg);
       } else {
         setStatus("disconnected");
-        setTimeout(() => connect(), 3000);
+        reconnectTimer.current = setTimeout(() => connect(), 3000);
       }
     };
 
@@ -53,9 +51,7 @@ export function useJarvis() {
       if (hasAnyKey()) {
         setStatus("direct");
         setBackend(`direct (${cfg.activeProvider})`);
-        const m: Record<string, ModelInfo[]> = {};
-        m[cfg.activeProvider] = [{ id: cfg.activeModel, name: cfg.activeModel, provider: cfg.activeProvider }];
-        setModels(m);
+        buildDirectModels(cfg);
       } else {
         setStatus("disconnected");
       }
@@ -78,11 +74,7 @@ export function useJarvis() {
           case "model_changed":
             if (data.active) {
               setBackend(data.active);
-              if (data.success) {
-                showToast(`Model switched`, "success");
-              } else {
-                showToast(`Failed to switch model`, "error");
-              }
+              showToast(data.success ? "Model switched" : "Failed to switch model", data.success ? "success" : "error");
             }
             break;
           case "models_list":
@@ -107,10 +99,17 @@ export function useJarvis() {
     };
   }, [showToast]);
 
+  function buildDirectModels(cfg: DirectConfig) {
+    const m: Record<string, ModelInfo[]> = {};
+    m[cfg.activeProvider] = [{ id: cfg.activeModel, name: cfg.activeModel, provider: cfg.activeProvider }];
+    setModels(m);
+  }
+
   useEffect(() => {
     connect();
     return () => {
       ws.current?.close();
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
     };
   }, [connect]);
 
@@ -121,9 +120,9 @@ export function useJarvis() {
       ws.current.send(JSON.stringify({ type: "message", content: text }));
       return;
     }
-    // Otherwise use direct mode
+    // Direct mode
     if (!hasAnyKey()) {
-      onErrorRef.current?.("No API keys configured. Open settings to add one.");
+      onErrorRef.current?.("No API keys configured. Open Settings to add one.");
       showToast("No API key configured", "error");
       return;
     }
@@ -152,8 +151,10 @@ export function useJarvis() {
   const sendCommand = useCallback((cmd: string) => {
     if (ws.current?.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify({ type: "command", content: cmd }));
-    } else if (cmd.startsWith("model:") || cmd.startsWith("backend:")) {
-      // In direct mode, update config for model switch
+      return;
+    }
+    // Direct mode commands
+    if (cmd.startsWith("model:") || cmd.startsWith("backend:")) {
       if (cmd.startsWith("model:")) {
         const parts = cmd.split(":");
         if (parts.length >= 3) {
@@ -175,19 +176,17 @@ export function useJarvis() {
   const switchModel = useCallback((backendName: string, modelId: string) => {
     if (ws.current?.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify({ type: "command", content: `model:${backendName}:${modelId}` }));
-    } else {
-      const cur = getConfig();
-      saveConfig({ ...cur, activeProvider: backendName as DirectConfig["activeProvider"], activeModel: modelId });
-      setBackend(`direct (${backendName})`);
-      setModels((prev) => {
-        const next = { ...prev };
-        const found = Object.keys(next).length > 0;
-        if (!found) {
-          next[backendName] = [{ id: modelId, name: modelId, provider: backendName }];
-        }
-        return next;
-      });
+      return;
     }
+    // Direct mode model switch
+    const cur = getConfig();
+    saveConfig({ ...cur, activeProvider: backendName as DirectConfig["activeProvider"], activeModel: modelId });
+    setBackend(`direct (${backendName})`);
+    setModels((prev) => {
+      const next = { ...prev };
+      next[backendName] = [{ id: modelId, name: modelId, provider: backendName }];
+      return next;
+    });
   }, []);
 
   const onToken = useCallback((fn: (token: string) => void) => {
@@ -208,6 +207,7 @@ export function useJarvis() {
     try {
       localStorage.setItem("jarvis_ws_url", url);
       ws.current?.close();
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
     } catch { /* */ }
   }, []);
 

@@ -526,10 +526,10 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }}
                     >
-                      <div className="flex items-center gap-2 px-3 py-2 border border-red-400/15 rounded-lg">
-                        <div className="w-1 h-1 rounded-full bg-red-400/40" />
-                        <span className="text-[10px] font-mono text-red-400/40">
-                          Connection error — retrying...
+                      <div className="flex items-center gap-2 px-3 py-2 border border-red-400/15 rounded-lg max-w-[90%]">
+                        <div className="w-1 h-1 rounded-full bg-red-400/40 shrink-0" />
+                        <span className="text-[10px] font-mono text-red-400/40 leading-relaxed">
+                          {errorMsg}
                         </span>
                       </div>
                     </motion.div>
