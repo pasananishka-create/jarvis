@@ -4,6 +4,7 @@ interface InputBarProps {
   onSend: (text: string) => void;
   disabled: boolean;
   onFocusChange?: (focused: boolean) => void;
+  modelLabel?: string;
 }
 
 declare global {
@@ -50,7 +51,7 @@ interface SpeechRecognitionErrorEvent {
   message: string;
 }
 
-export default function InputBar({ onSend, disabled, onFocusChange }: InputBarProps) {
+export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }: InputBarProps) {
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -115,6 +116,13 @@ export default function InputBar({ onSend, disabled, onFocusChange }: InputBarPr
       onSubmit={handleSubmit}
       className="border-t border-white/[0.04] bg-black/90 safe-bottom gpu-layer"
     >
+      {modelLabel && (
+        <div className="max-w-3xl mx-auto px-3 sm:px-6 pt-1.5">
+          <span className="text-[7px] font-mono tracking-[0.15em] text-white/10 truncate block">
+            {modelLabel}
+          </span>
+        </div>
+      )}
       <div className="max-w-3xl mx-auto px-2 sm:px-6 py-2 flex gap-2 items-center" style={{ minHeight: 56 }}>
         <div className="flex-1 relative">
           <input

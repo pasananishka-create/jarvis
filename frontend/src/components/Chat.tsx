@@ -1,12 +1,25 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useJarvis } from "../hooks/useJarvis";
-import type { Message, BackendInfo, ModelInfo } from "../types";
+import type { Message, BackendInfo } from "../types";
 import Header from "./Header";
 import CentralRing from "./CentralRing";
 import InputBar from "./InputBar";
 
 type ChatState = "idle" | "listening" | "processing" | "responding" | "error";
+
+const QUICK_ACTIONS = [
+  "What can you do?",
+  "Tell me a joke",
+  "Search the web",
+  "What's the time?",
+  "Run a command",
+  "Summarize this",
+];
+
+const SUGGESTIONS: Record<string, string[]> = {
+  default: ["Tell me more", "Explain differently", "Give an example"],
+};
 
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -39,6 +52,39 @@ function Toast({ message, type, onDismiss }: { message: string; type: "success" 
   );
 }
 
+function MessageTime({ ts }: { ts: number }) {
+  const d = new Date(ts);
+  const h = d.getHours().toString().padStart(2, "0");
+  const m = d.getMinutes().toString().padStart(2, "0");
+  return <span className="text-white/12 text-[9px] font-mono tabular-nums">{h}:{m}</span>;
+}
+
+function JarvisIcon() {
+  return (
+    <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={1.5} className="text-[#00D4FF]/30" />
+      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth={1.5} className="text-[#00D4FF]/40" />
+      <path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="currentColor" strokeWidth={1.2} className="text-[#00D4FF]/25" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" className="text-[#00D4FF]/50" />
+    </svg>
+  );
+}
+
+function BouncingDots() {
+  return (
+    <span className="inline-flex items-center gap-[3px] ml-1">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="w-[5px] h-[5px] rounded-full bg-[#00D4FF]/40 inline-block"
+          animate={{ y: [0, -4, 0] }}
+          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+        />
+      ))}
+    </span>
+  );
+}
+
 function WordByWordText({ text, speed = 20, reduced }: { text: string; speed?: number; reduced: boolean }) {
   const [visible, setVisible] = useState(0);
   const words = text.split(" ");
@@ -67,6 +113,38 @@ function WordByWordText({ text, speed = 20, reduced }: { text: string; speed?: n
         />
       )}
     </span>
+  );
+}
+
+function MessageContent({ content }: { content: string }) {
+  const parts: { type: "code" | "text"; value: string }[] = [];
+  const regex = /```(\w*)\n?([\s\S]*?)```/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(content)) !== null) {
+    if (match.index > last) parts.push({ type: "text", value: content.slice(last, match.index) });
+    parts.push({ type: "code", value: match[2] });
+    last = match.index + match[0].length;
+  }
+  if (last < content.length) parts.push({ type: "text", value: content.slice(last) });
+
+  if (parts.length === 0) parts.push({ type: "text", value: content });
+
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.type === "code" ? (
+          <pre
+            key={i}
+            className="bg-[#080C10] border border-white/[0.04] rounded-lg p-3 my-2 overflow-x-auto text-[12px] leading-[1.5] font-mono text-[#E8F4F8]/75 whitespace-pre-wrap"
+          >
+            {part.value}
+          </pre>
+        ) : (
+          <span key={i}>{part.value}</span>
+        )
+      )}
+    </>
   );
 }
 
@@ -107,37 +185,83 @@ function MessagesList({
         {messages.map((msg, i) => (
           <motion.div
             key={msg.id}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-2 sm:mb-3`}
+            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-3 sm:mb-4`}
             layout
             initial={reduced ? { opacity: 0 } : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut", delay: i * 0.02 }}
           >
             <div
-              className={`${
-                msg.role === "user"
-                  ? "bg-[#00D4FF]/6 border-l-2 border-[#00D4FF]/30 text-[#E8F4F8]"
-                  : "text-[#E8F4F8]/85"
-              } px-3 sm:px-4 py-2 sm:py-2.5 max-w-[88%] sm:max-w-[78%] md:max-w-[72%]`}
+              className={`flex gap-2.5 max-w-[90%] sm:max-w-[80%] md:max-w-[75%] ${
+                msg.role === "user" ? "flex-row-reverse" : "flex-row"
+              }`}
             >
-              {msg.role === "assistant" && (
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[8px] font-mono tracking-[0.1em] text-[#00D4FF]/35">
-                    J.A.R.V.I.S. &gt;
-                  </span>
-                </div>
-              )}
-              <p className="text-[14px] sm:text-sm leading-[1.6] sm:leading-relaxed font-sans">
-                {msg.role === "assistant" && respondingId === msg.id && !reduced ? (
-                  <WordByWordText text={msg.content} reduced={reduced} />
+              {/* Avatar column */}
+              <div className="flex flex-col items-center gap-1 pt-1 shrink-0">
+                {msg.role === "assistant" ? (
+                  <div className="w-[22px] h-[22px] rounded-full bg-[#00D4FF]/8 border border-[#00D4FF]/15 flex items-center justify-center">
+                    <JarvisIcon />
+                  </div>
                 ) : (
-                  msg.content
+                  <div className="w-[22px] h-[22px] rounded-full bg-[#00D4FF]/10 flex items-center justify-center">
+                    <svg className="w-3 h-3 text-[#00D4FF]/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
                 )}
-              </p>
+              </div>
+
+              {/* Bubble */}
+              <div className="min-w-0">
+                <div
+                  className={`${
+                    msg.role === "user"
+                      ? "bg-[#00D4FF]/8 border-l-2 border-[#00D4FF]/25 text-[#E8F4F8] rounded-r-lg"
+                      : "text-[#E8F4F8]/90"
+                  } px-3.5 sm:px-4 py-2.5 sm:py-3`}
+                >
+                  {msg.role === "assistant" && (
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[9px] font-mono tracking-[0.1em] text-[#00D4FF]/40">J.A.R.V.I.S.</span>
+                      <MessageTime ts={msg.timestamp} />
+                    </div>
+                  )}
+                  {msg.role === "user" && (
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[9px] font-mono tracking-[0.1em] text-white/20">YOU</span>
+                      <MessageTime ts={msg.timestamp} />
+                    </div>
+                  )}
+                  <p className="text-[14px] sm:text-sm leading-[1.7] sm:leading-relaxed font-sans">
+                    {msg.role === "assistant" && respondingId === msg.id && !reduced ? (
+                      <WordByWordText text={msg.content} reduced={reduced} />
+                    ) : (
+                      <MessageContent content={msg.content} />
+                    )}
+                  </p>
+                </div>
+              </div>
             </div>
           </motion.div>
         ))}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function SuggestionChips({ onSelect }: { onSelect: (text: string) => void }) {
+  const chips = SUGGESTIONS.default;
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-3 sm:-mx-6 px-3 sm:px-6">
+      {chips.map((chip) => (
+        <button
+          key={chip}
+          onClick={() => onSelect(chip)}
+          className="shrink-0 text-[10px] font-mono tracking-[0.05em] text-white/30 hover:text-[#00D4FF]/60 border border-white/[0.06] hover:border-[#00D4FF]/20 rounded-full px-3.5 py-2 transition-all whitespace-nowrap min-h-[36px]"
+        >
+          {chip}
+        </button>
+      ))}
     </div>
   );
 }
@@ -249,6 +373,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
     available: Object.keys(models),
     models,
   };
+  const currentModel = backend.includes("(") ? backend.split("(")[1]?.replace(")", "") : backend;
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-black" style={{ paddingBottom: keyboardHeight }}>
@@ -266,7 +391,6 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
       />
 
       <div className="flex-1 flex flex-col min-h-0 relative">
-        {/* Central Ring — visible when idle, compresses on keyboard */}
         <AnimatePresence>
           {showCentral && (
             <motion.div
@@ -276,29 +400,56 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
               animate={{
                 opacity: 1,
                 scale: 1,
-                minHeight: keyboardOpen ? "15vh" : hasMessages ? "20vh" : "35vh",
+                minHeight: keyboardOpen ? "20vh" : "30vh",
               }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             >
-              <CentralRing state={thinking && streamingText ? "responding" : chatState} />
-
-              {/* Standby label — only when truly idle */}
-              {!hasMessages && !thinking && chatState === "idle" && (
-                <motion.p
-                  className="absolute bottom-4 text-[8px] font-mono tracking-[0.2em] text-[#00D4FF]/20"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.8, delay: 0.5 }}
-                >
-                  STANDBY
-                </motion.p>
-              )}
+              <CentralRing state={chatState} />
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Conversation thread — bottom-anchored */}
+        {/* Welcome state — shown when no messages */}
+        <AnimatePresence>
+          {!hasMessages && !thinking && (
+            <motion.div
+              className="flex flex-col items-center px-4 pb-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <motion.p
+                className="text-[11px] font-mono tracking-[0.08em] text-[#00D4FF]/25 mb-5 text-center leading-relaxed max-w-xs"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.5 }}
+              >
+                Mission-capable AI intelligence system. How may I assist you today?
+              </motion.p>
+
+              <div className="flex flex-wrap justify-center gap-2 max-w-sm">
+                {QUICK_ACTIONS.map((action, i) => (
+                  <motion.button
+                    key={action}
+                    onClick={() => handleSend(action)}
+                    className="text-[10px] font-mono tracking-[0.05em] text-white/25 hover:text-[#00D4FF]/50 border border-white/[0.05] hover:border-[#00D4FF]/15 rounded-full px-3.5 py-2 transition-all min-h-[36px]"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.7 + i * 0.06 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    {action}
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Conversation thread */}
         <div
           data-thread
           className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-8 scroll-smooth overscroll-contain gpu-layer"
@@ -317,42 +468,53 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
                 <AnimatePresence>
                   {thinking && (
                     <motion.div
-                      className="flex justify-start py-2"
+                      className="flex justify-start py-1"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                     >
-                      <div className="text-[#E8F4F8]/85 px-3 sm:px-4 py-2 max-w-[88%] sm:max-w-[78%]">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[8px] font-mono tracking-[0.1em] text-[#00D4FF]/35">
-                            J.A.R.V.I.S. &gt;
-                          </span>
+                      <div className="flex gap-2.5 max-w-[90%] sm:max-w-[80%] md:max-w-[75%]">
+                        <div className="flex flex-col items-center gap-1 pt-1 shrink-0">
+                          <div className="w-[22px] h-[22px] rounded-full bg-[#00D4FF]/8 border border-[#00D4FF]/15 flex items-center justify-center">
+                            <JarvisIcon />
+                          </div>
                         </div>
-                        <p className="text-[14px] sm:text-sm leading-relaxed font-sans">
-                          {streamingText ? (
-                            <>{streamingText}<motion.span
-                              className="inline-block w-[2px] h-[14px] bg-[#00D4FF]/50 ml-0.5 align-text-bottom gpu-layer"
-                              animate={{ opacity: [1, 0] }}
-                              transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse" }}
-                            /></>
-                          ) : (
-                            <span className="text-[10px] font-mono tracking-[0.15em] text-[#00D4FF]/30 uppercase">
-                              Processing
-                              {[0, 1, 2].map((i) => (
-                                <motion.span
-                                  key={i}
-                                  className="inline-block"
-                                  animate={{ opacity: [0, 1, 0] }}
-                                  transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
-                                >.</motion.span>
-                              ))}
-                            </span>
-                          )}
-                        </p>
+                        <div className="min-w-0">
+                          <div className="text-[#E8F4F8]/90 px-3.5 sm:px-4 py-2.5 sm:py-3">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-[9px] font-mono tracking-[0.1em] text-[#00D4FF]/40">J.A.R.V.I.S.</span>
+                            </div>
+                            <p className="text-[14px] sm:text-sm leading-relaxed font-sans">
+                              {streamingText ? (
+                                <>{streamingText}<motion.span
+                                  className="inline-block w-[2px] h-[14px] bg-[#00D4FF]/50 ml-0.5 align-text-bottom gpu-layer"
+                                  animate={{ opacity: [1, 0] }}
+                                  transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse" }}
+                                /></>
+                              ) : (
+                                <span className="inline-flex items-center text-[11px] font-mono tracking-[0.05em] text-[#00D4FF]/30">
+                                  Processing<BouncingDots />
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
+
+                {/* Suggestion chips after response */}
+                {!thinking && hasMessages && messages[messages.length - 1]?.role === "assistant" && (
+                  <motion.div
+                    className="mt-3 mb-1"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.2 }}
+                  >
+                    <SuggestionChips onSelect={handleSend} />
+                  </motion.div>
+                )}
 
                 {/* Error state */}
                 <AnimatePresence>
@@ -378,7 +540,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
         </div>
       </div>
 
-      <InputBar onSend={handleSend} disabled={thinking} onFocusChange={setInputFocused} />
+      <InputBar onSend={handleSend} modelLabel={currentModel} disabled={thinking} onFocusChange={setInputFocused} />
     </div>
   );
 }
