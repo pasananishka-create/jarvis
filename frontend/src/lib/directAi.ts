@@ -118,16 +118,30 @@ export function getConfig(): DirectConfig {
   };
 }
 
-export function saveConfig(c: Partial<DirectConfig>) {
-  const current = getConfig();
-  const next = { ...current, ...c };
-  localStorage.setItem("jarvis_direct_config", JSON.stringify(next));
+export function saveConfig(c: Partial<DirectConfig>): boolean {
+  try {
+    const current = getConfig();
+    const next = { ...current, ...c };
+    localStorage.setItem("jarvis_direct_config", JSON.stringify(next));
+    return true;
+  } catch (e) {
+    console.error("saveConfig failed:", e);
+    return false;
+  }
 }
 
 export function hasAnyKey(): boolean {
   const c = getConfig();
-  if (c.activeProvider === "ollama") return !!c.ollamaUrl;
-  return !!(c.nvidiaKey || c.openaiKey || c.anthropicKey);
+  return !!(c.openaiKey || c.anthropicKey || c.nvidiaKey || c.ollamaUrl);
+}
+
+export function hasKeyForProvider(provider: string): boolean {
+  const c = getConfig();
+  if (provider === "ollama") return !!c.ollamaUrl;
+  if (provider === "openai") return !!c.openaiKey;
+  if (provider === "anthropic") return !!c.anthropicKey;
+  if (provider === "nvidia") return !!c.nvidiaKey;
+  return false;
 }
 
 export function getCuratedModels(provider: string): ModelOption[] {

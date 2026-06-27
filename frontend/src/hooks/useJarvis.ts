@@ -39,6 +39,7 @@ export function useJarvis() {
   }
 
   function fallbackToDirect() {
+    ws.current = null;
     const cfg = getConfig();
     if (hasAnyKey()) {
       setStatus("direct");

@@ -33,11 +33,13 @@ export default function SettingsDialog({ open, onClose }: Props) {
   const update = (patch: Partial<DirectConfig>) => {
     const next = { ...cfg, ...patch };
     setCfg(next);
-    saveConfig(next);
+    if (!saveConfig(next)) {
+      console.warn("Settings: failed to save config to localStorage");
+    }
   };
 
   const changeProvider = (id: DirectConfig["activeProvider"]) => {
-    // Save the new provider with its default model
+    // Always reset model to the provider's default when switching
     const cur = getConfig();
     const defaults: Record<string, string> = {
       nvidia: "meta/llama-3.1-8b-instruct",
@@ -45,7 +47,7 @@ export default function SettingsDialog({ open, onClose }: Props) {
       anthropic: "claude-sonnet-4-20250514",
       ollama: "llama3.1",
     };
-    const next = { ...cur, activeProvider: id, activeModel: cur.activeModel || defaults[id] };
+    const next = { ...cur, activeProvider: id, activeModel: defaults[id] };
     setCfg(next);
     saveConfig(next);
     setFetchedModels(getCuratedModels(id));
