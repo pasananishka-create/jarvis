@@ -12,6 +12,21 @@ export interface HttpClientResponse {
   data: any;
 }
 
+function httpError(status: number, detail: string, modelLabel?: string): string {
+  console.error(`API ${status}: ${detail.slice(0, 300)}`);
+  if (status === 404) {
+    const modelHint = modelLabel ? `Model "${modelLabel}" ` : "The model ";
+    return `${modelHint}was not found (404). It may be wrong or unavailable. Open Settings and try a different model from the list.`;
+  }
+  if (status === 401 || status === 403) {
+    return `Authentication failed (${status}). Check your API key in Settings.`;
+  }
+  if (status === 429) {
+    return `Rate limit exceeded (429). Wait a moment and try again.`;
+  }
+  return `API error ${status}: ${detail.slice(0, 300)}`;
+}
+
 export async function httpPost(
   url: string,
   body: Record<string, unknown>,
@@ -27,7 +42,7 @@ export async function httpPost(
       data: body,
     });
     if (resp.status < 200 || resp.status >= 300) {
-      throw new Error(`API error ${resp.status}: ${JSON.stringify(resp.data).slice(0, 300)}`);
+      throw new Error(httpError(resp.status, JSON.stringify(resp.data)));
     }
     return { status: resp.status, data: resp.data };
   }
@@ -40,7 +55,7 @@ export async function httpPost(
   });
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
-    throw new Error(`API error ${resp.status}: ${text.slice(0, 300)}`);
+    throw new Error(httpError(resp.status, text));
   }
   return { status: resp.status, data: await resp.json() };
 }
@@ -82,8 +97,9 @@ export async function* httpPostStream(
   signal?: AbortSignal,
   format: "openai" | "anthropic" = "openai",
 ): AsyncGenerator<string> {
+  const modelLabel = body.model || "unknown";
+
   if (isNative()) {
-    // Capacitor native HTTP — no streaming, get full response
     const { CapacitorHttp } = await import("@capacitor/core");
     const resp = await CapacitorHttp.request({
       method: "POST",
@@ -92,7 +108,7 @@ export async function* httpPostStream(
       data: { ...body, stream: true },
     });
     if (resp.status < 200 || resp.status >= 300) {
-      throw new Error(`API error ${resp.status}: ${JSON.stringify(resp.data).slice(0, 300)}`);
+      throw new Error(httpError(resp.status, JSON.stringify(resp.data), String(modelLabel)));
     }
     const text = typeof resp.data === "string" ? resp.data : JSON.stringify(resp.data);
     if (format === "anthropic") {
@@ -103,7 +119,6 @@ export async function* httpPostStream(
     return;
   }
 
-  // Browser: use fetch with streaming
   let resp: Response;
   try {
     resp = await fetch(url, {
@@ -124,7 +139,7 @@ export async function* httpPostStream(
 
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
-    throw new Error(`API error ${resp.status}: ${text.slice(0, 300)}`);
+    throw new Error(httpError(resp.status, text, String(modelLabel)));
   }
 
   const reader = resp.body?.getReader();
@@ -171,7 +186,7 @@ export async function httpGet(
       headers,
     });
     if (resp.status < 200 || resp.status >= 300) {
-      throw new Error(`API error ${resp.status}: ${JSON.stringify(resp.data).slice(0, 300)}`);
+      throw new Error(httpError(resp.status, JSON.stringify(resp.data)));
     }
     return { status: resp.status, data: resp.data };
   }
@@ -179,7 +194,7 @@ export async function httpGet(
   const resp = await fetch(url, { headers, signal });
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
-    throw new Error(`API error ${resp.status}: ${text.slice(0, 300)}`);
+    throw new Error(httpError(resp.status, text));
   }
   return { status: resp.status, data: await resp.json() };
 }
