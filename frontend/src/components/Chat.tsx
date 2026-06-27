@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import gsap from "gsap";
 import { useJarvis } from "../hooks/useJarvis";
 import type { Message, BackendInfo } from "../types";
 import Header from "./Header";
@@ -160,6 +161,8 @@ function MessagesList({
   const lastMsg = messages[messages.length - 1];
   const [respondingId, setRespondingId] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const msgRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const animatedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (lastMsg && lastMsg.role === "assistant") {
@@ -179,72 +182,90 @@ function MessagesList({
     }
   }, [messages]);
 
+  // GSAP stagger for new messages
+  useEffect(() => {
+    if (reduced) return;
+    const els: HTMLDivElement[] = [];
+    msgRefs.current.forEach((el, id) => {
+      if (!animatedRef.current.has(id)) {
+        els.push(el);
+        animatedRef.current.add(id);
+      }
+    });
+    if (els.length === 0) return;
+    gsap.from(els, {
+      opacity: 0,
+      y: 16,
+      scale: 0.98,
+      duration: 0.35,
+      stagger: 0.04,
+      ease: "power2.out",
+    });
+  }, [messages, reduced]);
+
+  const setMsgRef = (id: string, el: HTMLDivElement | null) => {
+    if (el) msgRefs.current.set(id, el);
+    else msgRefs.current.delete(id);
+  };
+
   return (
     <div ref={listRef} className="min-h-0">
-      <AnimatePresence mode="popLayout">
-        {messages.map((msg, i) => (
-          <motion.div
-            key={msg.id}
-            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-3 sm:mb-4`}
-            layout
-            initial={reduced ? { opacity: 0 } : { opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut", delay: i * 0.02 }}
+      {messages.map((msg) => (
+        <div
+          key={msg.id}
+          ref={(el) => setMsgRef(msg.id, el)}
+          className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-3 sm:mb-4`}
+        >
+          <div
+            className={`flex gap-2.5 max-w-[90%] sm:max-w-[80%] md:max-w-[75%] ${
+              msg.role === "user" ? "flex-row-reverse" : "flex-row"
+            }`}
           >
-            <div
-              className={`flex gap-2.5 max-w-[90%] sm:max-w-[80%] md:max-w-[75%] ${
-                msg.role === "user" ? "flex-row-reverse" : "flex-row"
-              }`}
-            >
-              {/* Avatar column */}
-              <div className="flex flex-col items-center gap-1 pt-1 shrink-0">
-                {msg.role === "assistant" ? (
-                  <div className="w-[22px] h-[22px] rounded-full bg-[#00D4FF]/8 border border-[#00D4FF]/15 flex items-center justify-center">
-                    <JarvisIcon />
-                  </div>
-                ) : (
-                  <div className="w-[22px] h-[22px] rounded-full bg-[#00D4FF]/10 flex items-center justify-center">
-                    <svg className="w-3 h-3 text-[#00D4FF]/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
+            <div className="flex flex-col items-center gap-1 pt-1 shrink-0">
+              {msg.role === "assistant" ? (
+                <div className="w-[22px] h-[22px] rounded-full bg-[#00D4FF]/8 border border-[#00D4FF]/15 flex items-center justify-center">
+                  <JarvisIcon />
+                </div>
+              ) : (
+                <div className="w-[22px] h-[22px] rounded-full bg-[#00D4FF]/10 flex items-center justify-center">
+                  <svg className="w-3 h-3 text-[#00D4FF]/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <div
+                className={`${
+                  msg.role === "user"
+                    ? "bg-[#00D4FF]/8 border-l-2 border-[#00D4FF]/25 text-[#E8F4F8] rounded-r-lg"
+                    : "text-[#E8F4F8]/90"
+                } px-3.5 sm:px-4 py-2.5 sm:py-3`}
+              >
+                {msg.role === "assistant" && (
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[9px] font-mono tracking-[0.1em] text-[#00D4FF]/40">J.A.R.V.I.S.</span>
+                    <MessageTime ts={msg.timestamp} />
                   </div>
                 )}
-              </div>
-
-              {/* Bubble */}
-              <div className="min-w-0">
-                <div
-                  className={`${
-                    msg.role === "user"
-                      ? "bg-[#00D4FF]/8 border-l-2 border-[#00D4FF]/25 text-[#E8F4F8] rounded-r-lg"
-                      : "text-[#E8F4F8]/90"
-                  } px-3.5 sm:px-4 py-2.5 sm:py-3`}
-                >
-                  {msg.role === "assistant" && (
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[9px] font-mono tracking-[0.1em] text-[#00D4FF]/40">J.A.R.V.I.S.</span>
-                      <MessageTime ts={msg.timestamp} />
-                    </div>
+                {msg.role === "user" && (
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[9px] font-mono tracking-[0.1em] text-white/20">YOU</span>
+                    <MessageTime ts={msg.timestamp} />
+                  </div>
+                )}
+                <p className="text-[14px] sm:text-sm leading-[1.7] sm:leading-relaxed font-sans">
+                  {msg.role === "assistant" && respondingId === msg.id && !reduced ? (
+                    <WordByWordText text={msg.content} reduced={reduced} />
+                  ) : (
+                    <MessageContent content={msg.content} />
                   )}
-                  {msg.role === "user" && (
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[9px] font-mono tracking-[0.1em] text-white/20">YOU</span>
-                      <MessageTime ts={msg.timestamp} />
-                    </div>
-                  )}
-                  <p className="text-[14px] sm:text-sm leading-[1.7] sm:leading-relaxed font-sans">
-                    {msg.role === "assistant" && respondingId === msg.id && !reduced ? (
-                      <WordByWordText text={msg.content} reduced={reduced} />
-                    ) : (
-                      <MessageContent content={msg.content} />
-                    )}
-                  </p>
-                </div>
+                </p>
               </div>
             </div>
-          </motion.div>
-        ))}
-      </AnimatePresence>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
