@@ -84,7 +84,7 @@ export default function SettingsDialog({ open, onClose }: Props) {
     update({ activeModel: id });
   };
 
-  const canRefresh = cfg.activeProvider === "openai" || cfg.activeProvider === "ollama";
+  const canRefresh = hasKeyForProvider(cfg.activeProvider);
 
   const keyField = (label: string, value: string | undefined, field: keyof DirectConfig) => (
     <div className="mb-3">
@@ -175,7 +175,7 @@ export default function SettingsDialog({ open, onClose }: Props) {
               <div className="mb-2">
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-[8px] font-mono tracking-[0.15em] text-white/20">Models</label>
-                  {canRefresh && hasKeyForProvider(cfg.activeProvider) && (
+                  {canRefresh && (
                     <button
                       onClick={handleRefreshModels}
                       disabled={fetching}

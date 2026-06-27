@@ -26,38 +26,61 @@ const CURATED_MODELS: Record<string, ModelOption[]> = {
   openai: [
     { id: "gpt-4o", name: "GPT-4o" },
     { id: "gpt-4o-mini", name: "GPT-4o Mini" },
+    { id: "gpt-4.1", name: "GPT-4.1" },
+    { id: "gpt-4.1-mini", name: "GPT-4.1 Mini" },
+    { id: "gpt-4.1-nano", name: "GPT-4.1 Nano" },
     { id: "gpt-4-turbo", name: "GPT-4 Turbo" },
     { id: "gpt-4", name: "GPT-4" },
     { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" },
     { id: "o1", name: "o1" },
     { id: "o3-mini", name: "o3 Mini" },
+    { id: "o4-mini", name: "o4 Mini" },
   ],
   nvidia: [
     { id: "meta/llama-3.1-8b-instruct", name: "Llama 3.1 8B" },
     { id: "meta/llama-3.1-70b-instruct", name: "Llama 3.1 70B" },
     { id: "meta/llama-3.1-405b-instruct", name: "Llama 3.1 405B" },
+    { id: "meta/llama-3.3-70b-instruct", name: "Llama 3.3 70B" },
     { id: "mistralai/mistral-nemo-12b-instruct", name: "Mistral Nemo 12B" },
     { id: "mistralai/mistral-7b-instruct-v0.3", name: "Mistral 7B" },
     { id: "google/gemma-2-27b-it", name: "Gemma 2 27B" },
     { id: "google/gemma-2-9b-it", name: "Gemma 2 9B" },
     { id: "nvidia/llama-3.1-nemotron-70b-instruct", name: "Nemotron 70B" },
+    { id: "nvidia/llama-3.1-nemotron-nano-8b-v1", name: "Nemotron Nano 8B" },
+    { id: "qwen/qwen2.5-72b-instruct", name: "Qwen 2.5 72B" },
+    { id: "qwen/qwen2.5-coder-32b-instruct", name: "Qwen 2.5 Coder 32B" },
+    { id: "deepseek-ai/deepseek-r1", name: "DeepSeek R1" },
+    { id: "deepseek-ai/deepseek-v3", name: "DeepSeek V3" },
+    { id: "microsoft/phi-3-mini-128k-instruct", name: "Phi-3 Mini 128K" },
+    { id: "microsoft/phi-3-medium-128k-instruct", name: "Phi-3 Medium 128K" },
   ],
   anthropic: [
     { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
+    { id: "claude-sonnet-4-20250514-thinking", name: "Claude Sonnet 4 Thinking" },
     { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
     { id: "claude-opus-4-20250514", name: "Claude Opus 4" },
+    { id: "claude-opus-4-20250514-thinking", name: "Claude Opus 4 Thinking" },
     { id: "claude-3-opus-20240229", name: "Claude 3 Opus" },
     { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" },
+    { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku" },
   ],
   ollama: [
     { id: "llama3.1", name: "Llama 3.1" },
     { id: "llama3.2", name: "Llama 3.2" },
+    { id: "llama3.3", name: "Llama 3.3" },
     { id: "mistral", name: "Mistral" },
+    { id: "mistral-nemo", name: "Mistral Nemo" },
     { id: "codellama", name: "Code Llama" },
     { id: "deepseek-coder", name: "DeepSeek Coder" },
+    { id: "deepseek-r1", name: "DeepSeek R1" },
     { id: "mixtral", name: "Mixtral" },
+    { id: "qwen2.5", name: "Qwen 2.5" },
     { id: "phi3", name: "Phi-3" },
+    { id: "phi4", name: "Phi-4" },
     { id: "gemma2", name: "Gemma 2" },
+    { id: "gemma3", name: "Gemma 3" },
+    { id: "command-r", name: "Command R" },
+    { id: "command-r-plus", name: "Command R+" },
   ],
 };
 
@@ -136,10 +159,31 @@ export async function fetchLiveModels(provider: string): Promise<ModelOption[]> 
         return getCuratedModels("ollama");
       }
     }
-    case "nvidia":
-      return getCuratedModels("nvidia");
-    case "anthropic":
-      return getCuratedModels("anthropic");
+    case "nvidia": {
+      if (!cfg.nvidiaKey) return getCuratedModels("nvidia");
+      try {
+        const resp = await httpGet("https://integrate.api.nvidia.com/v1/models", {
+          Authorization: `Bearer ${cfg.nvidiaKey}`,
+        });
+        const models: ModelOption[] = (resp.data.data || []).map((m: any) => ({ id: m.id, name: m.id }));
+        return models.length > 0 ? models : getCuratedModels("nvidia");
+      } catch {
+        return getCuratedModels("nvidia");
+      }
+    }
+    case "anthropic": {
+      if (!cfg.anthropicKey) return getCuratedModels("anthropic");
+      try {
+        const resp = await httpGet("https://api.anthropic.com/v1/models", {
+          "x-api-key": cfg.anthropicKey,
+          "anthropic-version": "2023-06-01",
+        });
+        const models: ModelOption[] = (resp.data.data || []).map((m: any) => ({ id: m.id, name: m.display_name || m.id }));
+        return models.length > 0 ? models : getCuratedModels("anthropic");
+      } catch {
+        return getCuratedModels("anthropic");
+      }
+    }
     default:
       return [];
   }
