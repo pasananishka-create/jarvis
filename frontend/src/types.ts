@@ -22,4 +22,4 @@ export interface BackendInfo {
   models?: Record<string, ModelInfo[]>;
 }
 
-export type ConnectionStatus = "connecting" | "connected" | "disconnected";
+export type ConnectionStatus = "connecting" | "connected" | "disconnected" | "direct";

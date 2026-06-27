@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import type { ConnectionStatus, ModelInfo } from "../types";
+import { directChat, getConfig, saveConfig, hasAnyKey, type DirectConfig } from "../lib/directAi";
 
 export function useJarvis() {
   const ws = useRef<WebSocket | null>(null);
@@ -24,7 +25,6 @@ export function useJarvis() {
     const stored = typeof window !== "undefined" ? localStorage.getItem("jarvis_ws_url") : null;
     const url = import.meta.env.VITE_WS_URL || stored || `${protocol}//${host}/ws`;
 
-    console.log("[JARVIS] Connecting to:", url);
     const socket = new WebSocket(url);
     ws.current = socket;
 
@@ -34,12 +34,31 @@ export function useJarvis() {
     };
 
     socket.onclose = () => {
-      setStatus("disconnected");
-      setTimeout(() => connect(), 3000);
+      const cfg = getConfig();
+      if (hasAnyKey()) {
+        setStatus("direct");
+        setBackend(`direct (${cfg.activeProvider})`);
+        // Build a virtual models list from config
+        const m: Record<string, ModelInfo[]> = {};
+        m[cfg.activeProvider] = [{ id: cfg.activeModel, name: cfg.activeModel, provider: cfg.activeProvider }];
+        setModels(m);
+      } else {
+        setStatus("disconnected");
+        setTimeout(() => connect(), 3000);
+      }
     };
 
     socket.onerror = () => {
-      setStatus("disconnected");
+      const cfg = getConfig();
+      if (hasAnyKey()) {
+        setStatus("direct");
+        setBackend(`direct (${cfg.activeProvider})`);
+        const m: Record<string, ModelInfo[]> = {};
+        m[cfg.activeProvider] = [{ id: cfg.activeModel, name: cfg.activeModel, provider: cfg.activeProvider }];
+        setModels(m);
+      } else {
+        setStatus("disconnected");
+      }
     };
 
     socket.onmessage = (event) => {
@@ -69,7 +88,6 @@ export function useJarvis() {
           case "models_list":
             if (data.models) {
               const m = { ...data.models };
-              // Ensure every backend from the server has at least an entry
               if (data.backends) {
                 for (const bk of data.backends) {
                   if (!m[bk]) m[bk] = [];
@@ -97,22 +115,78 @@ export function useJarvis() {
   }, [connect]);
 
   const sendMessage = useCallback((text: string) => {
+    const cfg = getConfig();
+    // If WebSocket is open, use it
     if (ws.current?.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify({ type: "message", content: text }));
+      return;
     }
-  }, []);
+    // Otherwise use direct mode
+    if (!hasAnyKey()) {
+      onErrorRef.current?.("No API keys configured. Open settings to add one.");
+      showToast("No API key configured", "error");
+      return;
+    }
+    const tokenCb = onTokenRef.current;
+    const doneCb = onDoneRef.current;
+    const errorCb = onErrorRef.current;
+    if (!tokenCb) return;
+
+    (async () => {
+      try {
+        let full = "";
+        for await (const chunk of directChat([{ role: "user", content: text }])) {
+          full += chunk;
+          tokenCb(chunk);
+        }
+        doneCb?.("");
+        setBackend(`direct (${cfg.activeProvider})`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errorCb?.(msg);
+        showToast(msg, "error");
+      }
+    })();
+  }, [showToast]);
 
   const sendCommand = useCallback((cmd: string) => {
     if (ws.current?.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify({ type: "command", content: cmd }));
+    } else if (cmd.startsWith("model:") || cmd.startsWith("backend:")) {
+      // In direct mode, update config for model switch
+      if (cmd.startsWith("model:")) {
+        const parts = cmd.split(":");
+        if (parts.length >= 3) {
+          const bk = parts[1];
+          const mdl = parts.slice(2).join(":");
+          const cur = getConfig();
+          saveConfig({ ...cur, activeProvider: bk as DirectConfig["activeProvider"], activeModel: mdl });
+          setBackend(`direct (${bk})`);
+          setModels((prev) => {
+            const next = { ...prev };
+            next[bk] = [{ id: mdl, name: mdl, provider: bk }];
+            return next;
+          });
+        }
+      }
     }
   }, []);
 
   const switchModel = useCallback((backendName: string, modelId: string) => {
     if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(
-        JSON.stringify({ type: "command", content: `model:${backendName}:${modelId}` })
-      );
+      ws.current.send(JSON.stringify({ type: "command", content: `model:${backendName}:${modelId}` }));
+    } else {
+      const cur = getConfig();
+      saveConfig({ ...cur, activeProvider: backendName as DirectConfig["activeProvider"], activeModel: modelId });
+      setBackend(`direct (${backendName})`);
+      setModels((prev) => {
+        const next = { ...prev };
+        const found = Object.keys(next).length > 0;
+        if (!found) {
+          next[backendName] = [{ id: modelId, name: modelId, provider: backendName }];
+        }
+        return next;
+      });
     }
   }, []);
 

@@ -51,6 +51,7 @@ function StatusBar({ status, backendInfo, thinking }: DashboardSidebarProps) {
     connected: { dot: "#4ade80", text: "Online" },
     connecting: { dot: "#facc15", text: "Connecting..." },
     disconnected: { dot: "#f87171", text: "Offline" },
+    direct: { dot: "#00FF9C", text: "Direct" },
   };
   const sc = statusColors[status];
 

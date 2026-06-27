@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { ConnectionStatus, BackendInfo, ModelInfo } from "../types";
 import { useTheme, type ThemeName } from "../hooks/useTheme";
+import SettingsDialog from "./SettingsDialog";
 
 interface HeaderProps {
   status: ConnectionStatus;
@@ -14,16 +15,15 @@ interface HeaderProps {
 }
 
 function StatusDot({ status }: { status: ConnectionStatus }) {
-  const on = status === "connected";
+  const color = status === "connected" ? "rgba(0, 212, 255, 0.5)"
+    : status === "direct" ? "rgba(0, 255, 156, 0.5)"
+    : "rgba(232, 79, 79, 0.4)";
+  const pulse = status === "connected" || status === "direct";
   return (
     <motion.div
       className="rounded-full shrink-0"
-      style={{
-        width: 6,
-        height: 6,
-        backgroundColor: on ? "rgba(0, 212, 255, 0.5)" : "rgba(232, 79, 79, 0.4)",
-      }}
-      animate={on ? { opacity: [0.5, 1, 0.5] } : {}}
+      style={{ width: 6, height: 6, backgroundColor: color }}
+      animate={pulse ? { opacity: [0.5, 1, 0.5] } : {}}
       transition={{ duration: 3, repeat: Infinity }}
     />
   );
@@ -50,6 +50,7 @@ export default function Header({ status, backendInfo, models, onClear, onSwitchM
   const [modelLoading, setModelLoading] = useState(false);
   const [urlOpen, setUrlOpen] = useState(false);
   const [urlInput, setUrlInput] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const { theme, setTheme, themes } = useTheme();
   const elapsed = useSessionTimer();
@@ -91,9 +92,9 @@ export default function Header({ status, backendInfo, models, onClear, onSwitchM
           >
             <StatusDot status={status} />
             <span className={`text-[9px] font-mono tracking-[0.2em] ${
-              status === "connected" ? "text-[#00D4FF]/50" : "text-red-400/30"
+              status === "connected" ? "text-[#00D4FF]/50" : status === "direct" ? "text-[#00FF9C]/40" : "text-red-400/30"
             }`}>
-              {status === "connected" ? "J.A.R.V.I.S." : status === "connecting" ? "SYNC" : "OFF"}
+              {status === "connected" ? "J.A.R.V.I.S." : status === "connecting" ? "SYNC" : status === "direct" ? "DIRECT" : "OFF"}
             </span>
           </button>
           <span className="text-white/[0.04]">|</span>
@@ -123,6 +124,17 @@ export default function Header({ status, backendInfo, models, onClear, onSwitchM
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+            </svg>
+          </button>
+
+          <button
+            onClick={() => { setSettingsOpen(true); setModelOpen(false); setThemeOpen(false); }}
+            className="text-white/20 hover:text-white/40 p-2 rounded-lg transition-colors min-h-[44px] flex items-center justify-center"
+            title="Settings"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </button>
 
@@ -346,6 +358,7 @@ export default function Header({ status, backendInfo, models, onClear, onSwitchM
           </AnimatePresence>
         </div>
       </div>
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </header>
   );
 }
