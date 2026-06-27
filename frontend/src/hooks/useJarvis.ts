@@ -21,8 +21,10 @@ export function useJarvis() {
   const connect = useCallback(() => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
-    const url = import.meta.env.VITE_WS_URL || `${protocol}//${host}/ws`;
+    const stored = typeof window !== "undefined" ? localStorage.getItem("jarvis_ws_url") : null;
+    const url = import.meta.env.VITE_WS_URL || stored || `${protocol}//${host}/ws`;
 
+    console.log("[JARVIS] Connecting to:", url);
     const socket = new WebSocket(url);
     ws.current = socket;
 
@@ -128,5 +130,12 @@ export function useJarvis() {
 
   const dismissToast = useCallback(() => setToast(null), []);
 
-  return { status, backend, models, toast, sendMessage, sendCommand, switchModel, onToken, onDone, onError, dismissToast };
+  const setBackendUrl = useCallback((url: string) => {
+    try {
+      localStorage.setItem("jarvis_ws_url", url);
+      ws.current?.close();
+    } catch { /* */ }
+  }, []);
+
+  return { status, backend, models, toast, sendMessage, sendCommand, switchModel, onToken, onDone, onError, dismissToast, setBackendUrl };
 }

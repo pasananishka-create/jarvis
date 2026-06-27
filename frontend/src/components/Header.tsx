@@ -10,6 +10,7 @@ interface HeaderProps {
   onClear: () => void;
   onSwitchBackend: (name: string) => void;
   onSwitchModel: (backend: string, model: string) => void;
+  onSetBackendUrl?: (url: string) => void;
 }
 
 function StatusDot({ status }: { status: ConnectionStatus }) {
@@ -43,10 +44,12 @@ function useSessionTimer() {
   return elapsed;
 }
 
-export default function Header({ status, backendInfo, models, onClear, onSwitchModel }: HeaderProps) {
+export default function Header({ status, backendInfo, models, onClear, onSwitchModel, onSetBackendUrl }: HeaderProps) {
   const [modelOpen, setModelOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
   const [modelLoading, setModelLoading] = useState(false);
+  const [urlOpen, setUrlOpen] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
   const panelRef = useRef<HTMLDivElement>(null);
   const { theme, setTheme, themes } = useTheme();
   const elapsed = useSessionTimer();
@@ -82,12 +85,17 @@ export default function Header({ status, backendInfo, models, onClear, onSwitchM
       <div className="max-w-3xl mx-auto px-3 sm:px-6 flex items-center justify-between h-11">
         {/* Left */}
         <div className="flex items-center gap-2.5 min-w-0">
-          <StatusDot status={status} />
-          <span className={`text-[9px] font-mono tracking-[0.2em] ${
-            status === "connected" ? "text-[#00D4FF]/50" : "text-red-400/30"
-          }`}>
-            {status === "connected" ? "J.A.R.V.I.S." : status === "connecting" ? "SYNC" : "OFF"}
-          </span>
+          <button
+            onClick={() => { if (status !== "connected") { setUrlInput(""); setUrlOpen(true); } }}
+            className="flex items-center gap-2.5 min-w-0"
+          >
+            <StatusDot status={status} />
+            <span className={`text-[9px] font-mono tracking-[0.2em] ${
+              status === "connected" ? "text-[#00D4FF]/50" : "text-red-400/30"
+            }`}>
+              {status === "connected" ? "J.A.R.V.I.S." : status === "connecting" ? "SYNC" : "OFF"}
+            </span>
+          </button>
           <span className="text-white/[0.04]">|</span>
           <span className="text-[8px] font-mono text-white/12 truncate max-w-[80px] sm:max-w-[160px]">
             {currentModel || currentBackend || "no backend"}
@@ -260,6 +268,78 @@ export default function Header({ status, backendInfo, models, onClear, onSwitchM
                     </button>
                   ))}
                   <div className="sm:hidden h-4" />
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+
+          {/* URL config dialog */}
+          <AnimatePresence>
+            {urlOpen && (
+              <>
+                <motion.div
+                  className="fixed inset-0 z-50 bg-black/60"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setUrlOpen(false)}
+                />
+                <motion.div
+                  className="fixed bottom-0 left-0 right-0 z-50 bg-[#080C10] rounded-t-xl shadow-xl"
+                  initial={{ y: 200, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 200, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ paddingBottom: "env(safe-area-inset-bottom, 16px)" }}
+                >
+                  <div className="px-4 py-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-[9px] font-mono tracking-[0.15em] text-white/30">SERVER URL</span>
+                      <button onClick={() => setUrlOpen(false)} className="text-white/30 p-1.5 min-h-[40px] flex items-center justify-center">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <p className="text-[10px] font-mono text-white/20 mb-3 leading-relaxed">
+                      Enter the WebSocket URL of your JARVIS backend server.
+                      Example: <span className="text-[#00D4FF]/40">ws://192.168.1.100:8000/ws</span>
+                    </p>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (urlInput.trim()) {
+                          onSetBackendUrl?.(urlInput.trim());
+                          setUrlOpen(false);
+                        }
+                      }}
+                    >
+                      <input
+                        value={urlInput}
+                        onChange={(e) => setUrlInput(e.target.value)}
+                        placeholder="ws://192.168.1.100:8000/ws"
+                        className="w-full bg-black border border-white/[0.08] rounded-lg px-3.5 py-3 text-[14px] font-mono text-[#E8F4F8]/70 placeholder-white/10 focus:outline-none focus:border-[#00D4FF]/25 transition-colors min-h-[48px]"
+                        autoFocus
+                        enterKeyHint="go"
+                      />
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          type="submit"
+                          disabled={!urlInput.trim()}
+                          className="flex-1 bg-[#00D4FF]/10 border border-[#00D4FF]/20 text-[#00D4FF]/70 rounded-lg py-3 text-[10px] font-mono tracking-[0.1em] transition-colors min-h-[44px] disabled:opacity-20"
+                        >
+                          CONNECT
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { localStorage.removeItem("jarvis_ws_url"); setUrlOpen(false); }}
+                          className="flex-1 bg-white/[0.03] border border-white/[0.06] text-white/30 rounded-lg py-3 text-[10px] font-mono tracking-[0.1em] transition-colors min-h-[44px]"
+                        >
+                          RESET
+                        </button>
+                      </div>
+                    </form>
+                  </div>
                 </motion.div>
               </>
             )}

@@ -267,7 +267,7 @@ function SuggestionChips({ onSelect }: { onSelect: (text: string) => void }) {
 }
 
 export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }) {
-  const { status, backend, models, toast, sendMessage, sendCommand, switchModel, onToken, onDone, onError, dismissToast } = useJarvis();
+  const { status, backend, models, toast, sendMessage, sendCommand, switchModel, onToken, onDone, onError, dismissToast, setBackendUrl } = useJarvis();
   const [messages, setMessages] = useState<Message[]>([]);
   const [streamingText, setStreamingText] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -388,6 +388,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
         onClear={handleClear}
         onSwitchBackend={handleSwitchBackend}
         onSwitchModel={handleSwitchModel}
+        onSetBackendUrl={setBackendUrl}
       />
 
       <div className="flex-1 flex flex-col min-h-0 relative">
