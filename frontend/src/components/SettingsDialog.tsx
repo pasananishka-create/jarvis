@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getConfig, saveConfig, fetchModels, type DirectConfig, type ModelOption } from "../lib/directAi";
+import { getConfig, saveConfig, fetchLiveModels, getCuratedModels, type DirectConfig, type ModelOption } from "../lib/directAi";
 
 interface Props {
   open: boolean;
   onClose: () => void;
 }
 
-const PROVIDERS: { id: DirectConfig["activeProvider"]; label: string; modelKey: string }[] = [
-  { id: "nvidia", label: "NVIDIA NIM", modelKey: "meta/llama-3.1-8b-instruct" },
-  { id: "openai", label: "OpenAI", modelKey: "gpt-4o" },
-  { id: "anthropic", label: "Anthropic", modelKey: "claude-sonnet-4-20250514" },
-  { id: "ollama", label: "Ollama (Local)", modelKey: "llama3.1" },
+const PROVIDERS: { id: DirectConfig["activeProvider"]; label: string; }[] = [
+  { id: "nvidia", label: "NVIDIA NIM" },
+  { id: "openai", label: "OpenAI" },
+  { id: "anthropic", label: "Anthropic" },
+  { id: "ollama", label: "Ollama" },
 ];
 
 export default function SettingsDialog({ open, onClose }: Props) {
@@ -20,12 +20,36 @@ export default function SettingsDialog({ open, onClose }: Props) {
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  useEffect(() => { if (open) { const c = getConfig(); setCfg(c); setFetchedModels([]); setFetchError(null); } }, [open]);
+  useEffect(() => {
+    if (open) {
+      const c = getConfig();
+      setCfg(c);
+      // Load curated models for the current provider
+      setFetchedModels(getCuratedModels(c.activeProvider));
+      setFetchError(null);
+    }
+  }, [open]);
 
   const update = (patch: Partial<DirectConfig>) => {
     const next = { ...cfg, ...patch };
     setCfg(next);
     saveConfig(next);
+  };
+
+  const changeProvider = (id: DirectConfig["activeProvider"]) => {
+    // Save the new provider with its default model
+    const cur = getConfig();
+    const defaults: Record<string, string> = {
+      nvidia: "meta/llama-3.1-8b-instruct",
+      openai: "gpt-4o",
+      anthropic: "claude-sonnet-4-20250514",
+      ollama: "llama3.1",
+    };
+    const next = { ...cur, activeProvider: id, activeModel: cur.activeModel || defaults[id] };
+    setCfg(next);
+    saveConfig(next);
+    setFetchedModels(getCuratedModels(id));
+    setFetchError(null);
   };
 
   const hasKeyForProvider = (p: DirectConfig["activeProvider"]) => {
@@ -36,27 +60,31 @@ export default function SettingsDialog({ open, onClose }: Props) {
     return false;
   };
 
-  const handleFetchModels = useCallback(async () => {
+  const handleRefreshModels = useCallback(async () => {
     setFetching(true);
     setFetchError(null);
-    setFetchedModels([]);
     try {
-      const models = await fetchModels(cfg.activeProvider, cfg);
+      const models = await fetchLiveModels(cfg.activeProvider);
       setFetchedModels(models);
-      if (!models.find((m) => m.id === cfg.activeModel) && models.length > 0) {
+      // Select first model if current isn't in list
+      if (models.length > 0 && !models.find((m) => m.id === cfg.activeModel)) {
         update({ activeModel: models[0].id });
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setFetchError(msg);
+      // Fall back to curated
+      setFetchedModels(getCuratedModels(cfg.activeProvider));
     } finally {
       setFetching(false);
     }
-  }, [cfg.activeProvider, cfg]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cfg.activeProvider]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectModel = (id: string) => {
     update({ activeModel: id });
   };
+
+  const canRefresh = cfg.activeProvider === "openai" || cfg.activeProvider === "ollama";
 
   const keyField = (label: string, value: string | undefined, field: keyof DirectConfig) => (
     <div className="mb-3">
@@ -65,7 +93,6 @@ export default function SettingsDialog({ open, onClose }: Props) {
         value={value || ""}
         onChange={(e) => {
           update({ [field]: e.target.value } as any);
-          setFetchedModels([]);
           setFetchError(null);
         }}
         type="password"
@@ -114,15 +141,7 @@ export default function SettingsDialog({ open, onClose }: Props) {
                 {PROVIDERS.map((p) => (
                   <button
                     key={p.id}
-                    onClick={() => {
-                      update({ activeProvider: p.id, activeModel: p.modelKey });
-                      setFetchedModels([]);
-                      setFetchError(null);
-                      if (hasKeyForProvider(p.id)) {
-                        // auto-fetch on provider switch if key already present
-                        setTimeout(() => handleFetchModels(), 100);
-                      }
-                    }}
+                    onClick={() => changeProvider(p.id)}
                     className={`shrink-0 px-3 py-2 rounded-lg text-[9px] font-mono tracking-[0.08em] border transition-all min-h-[36px] ${
                       cfg.activeProvider === p.id
                         ? "bg-[#00D4FF]/8 border-[#00D4FF]/20 text-[#00D4FF]/60"
@@ -144,62 +163,65 @@ export default function SettingsDialog({ open, onClose }: Props) {
                   <label className="text-[8px] font-mono tracking-[0.15em] text-white/20 block mb-1.5">Ollama URL</label>
                   <input
                     value={cfg.ollamaUrl || ""}
-                    onChange={(e) => { update({ ollamaUrl: e.target.value }); setFetchedModels([]); setFetchError(null); }}
+                    onChange={(e) => { update({ ollamaUrl: e.target.value }); setFetchError(null); }}
                     placeholder="http://192.168.1.100:11434"
                     className="w-full bg-black border border-white/[0.06] rounded-lg px-3 py-2.5 text-[12px] font-mono text-[#E8F4F8]/60 placeholder-white/8 focus:outline-none focus:border-[#00D4FF]/20 transition-colors min-h-[40px]"
                   />
                 </div>
               )}
 
-              {/* Find Models button */}
-              {hasKeyForProvider(cfg.activeProvider) && (
-                <button
-                  onClick={handleFetchModels}
-                  disabled={fetching}
-                  className="w-full bg-[#00D4FF]/6 border border-[#00D4FF]/12 text-[#00D4FF]/50 hover:text-[#00D4FF]/70 hover:bg-[#00D4FF]/10 rounded-lg py-2.5 text-[9px] font-mono tracking-[0.1em] transition-colors min-h-[40px] disabled:opacity-20 mb-3"
-                >
-                  {fetching ? "Fetching models..." : "FIND MODELS"}
-                </button>
-              )}
-
-              {/* Fetch error */}
-              {fetchError && (
-                <p className="text-[9px] font-mono text-red-400/50 mb-3 leading-relaxed">{fetchError}</p>
-              )}
-
-              {/* Fetched model list */}
-              {fetchedModels.length > 0 && (
-                <div className="mb-4 max-h-[180px] overflow-y-auto border border-white/[0.04] rounded-lg">
-                  {fetchedModels.map((m) => {
-                    const selected = m.id === cfg.activeModel;
-                    return (
-                      <button
-                        key={m.id}
-                        onClick={() => selectModel(m.id)}
-                        className={`w-full text-left px-3 py-2.5 text-[10px] font-mono tracking-wider border-b border-white/[0.02] last:border-0 transition-colors flex items-center gap-2 min-h-[40px] ${
-                          selected
-                            ? "text-[#00D4FF]/80 bg-[#00D4FF]/6"
-                            : "text-white/30 hover:text-white/50 hover:bg-white/[0.02]"
-                        }`}
-                      >
-                        {selected && <div className="w-1 h-2 rounded-full bg-[#00D4FF]/60 shrink-0" />}
-                        {!selected && <div className="w-1 shrink-0" />}
-                        <span className="truncate">{m.name}</span>
-                      </button>
-                    );
-                  })}
+              {/* Model list */}
+              <div className="mb-2">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[8px] font-mono tracking-[0.15em] text-white/20">Models</label>
+                  {canRefresh && hasKeyForProvider(cfg.activeProvider) && (
+                    <button
+                      onClick={handleRefreshModels}
+                      disabled={fetching}
+                      className="text-[8px] font-mono tracking-[0.1em] text-[#00D4FF]/30 hover:text-[#00D4FF]/60 transition-colors min-h-[36px] px-2"
+                    >
+                      {fetching ? "..." : "REFRESH"}
+                    </button>
+                  )}
                 </div>
-              )}
 
-              {/* Manual model ID input (fallback) */}
+                {fetchError && (
+                  <p className="text-[8px] font-mono text-red-400/40 mb-2">{fetchError}</p>
+                )}
+
+                {fetchedModels.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-1.5 mb-3 max-h-[170px] overflow-y-auto">
+                    {fetchedModels.map((m) => {
+                      const selected = m.id === cfg.activeModel;
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={() => selectModel(m.id)}
+                          className={`text-left px-2.5 py-2 rounded-lg border text-[9px] font-mono tracking-wider transition-all flex items-center gap-1.5 min-h-[36px] ${
+                            selected
+                              ? "bg-[#00D4FF]/8 border-[#00D4FF]/25 text-[#00D4FF]/70"
+                              : "bg-black/30 border-white/[0.04] text-white/25 hover:text-white/45 hover:border-white/[0.08]"
+                          }`}
+                        >
+                          {selected && <div className="w-1 h-2 rounded-full bg-[#00D4FF]/60 shrink-0" />}
+                          <span className="truncate leading-tight">{m.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-[9px] font-mono text-white/15 mb-3 italic">No models loaded</p>
+                )}
+              </div>
+
+              {/* Manual model ID override */}
               <div className="mb-4">
                 <label className="text-[8px] font-mono tracking-[0.15em] text-white/20 block mb-1.5">
-                  Model ID {fetchedModels.length > 0 ? "(override)" : "(manual)"}
+                  Model ID {fetchedModels.length > 0 ? "(override)" : ""}
                 </label>
                 <input
                   value={cfg.activeModel}
                   onChange={(e) => update({ activeModel: e.target.value })}
-                  placeholder={PROVIDERS.find((p) => p.id === cfg.activeProvider)?.modelKey || ""}
                   className="w-full bg-black border border-white/[0.06] rounded-lg px-3 py-2.5 text-[12px] font-mono text-[#E8F4F8]/60 placeholder-white/8 focus:outline-none focus:border-[#00D4FF]/20 transition-colors min-h-[40px]"
                 />
               </div>

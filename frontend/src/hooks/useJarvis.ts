@@ -11,6 +11,7 @@ export function useJarvis() {
   const onTokenRef = useRef<((token: string) => void) | null>(null);
   const onDoneRef = useRef<((backend: string) => void) | null>(null);
   const onErrorRef = useRef<((error: string) => void) | null>(null);
+  const historyRef = useRef<{ role: string; content: string }[]>([]);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -115,12 +116,10 @@ export function useJarvis() {
 
   const sendMessage = useCallback((text: string) => {
     const cfg = getConfig();
-    // If WebSocket is open, use it
     if (ws.current?.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify({ type: "message", content: text }));
       return;
     }
-    // Direct mode
     if (!hasAnyKey()) {
       onErrorRef.current?.("No API keys configured. Open Settings to add one.");
       showToast("No API key configured", "error");
@@ -131,12 +130,25 @@ export function useJarvis() {
     const errorCb = onErrorRef.current;
     if (!tokenCb) return;
 
+    // Build message history
+    const msgs = [...historyRef.current, { role: "user" as const, content: text }];
+
     (async () => {
       try {
         let full = "";
-        for await (const chunk of directChat([{ role: "user", content: text }])) {
+        for await (const chunk of directChat(msgs)) {
           full += chunk;
           tokenCb(chunk);
+        }
+        // Store in history
+        historyRef.current = [
+          ...historyRef.current,
+          { role: "user", content: text },
+          { role: "assistant", content: full },
+        ];
+        // Keep last 20 messages to avoid context overflow
+        if (historyRef.current.length > 40) {
+          historyRef.current = historyRef.current.slice(-40);
         }
         doneCb?.("");
         setBackend(`direct (${cfg.activeProvider})`);
@@ -153,7 +165,10 @@ export function useJarvis() {
       ws.current.send(JSON.stringify({ type: "command", content: cmd }));
       return;
     }
-    // Direct mode commands
+    if (cmd === "clear") {
+      historyRef.current = [];
+      return;
+    }
     if (cmd.startsWith("model:") || cmd.startsWith("backend:")) {
       if (cmd.startsWith("model:")) {
         const parts = cmd.split(":");
@@ -178,7 +193,6 @@ export function useJarvis() {
       ws.current.send(JSON.stringify({ type: "command", content: `model:${backendName}:${modelId}` }));
       return;
     }
-    // Direct mode model switch
     const cur = getConfig();
     saveConfig({ ...cur, activeProvider: backendName as DirectConfig["activeProvider"], activeModel: modelId });
     setBackend(`direct (${backendName})`);
