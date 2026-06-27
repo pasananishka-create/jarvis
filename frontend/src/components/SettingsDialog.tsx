@@ -7,10 +7,10 @@ interface Props {
   onClose: () => void;
 }
 
-const PROVIDERS: { id: DirectConfig["activeProvider"]; label: string; }[] = [
-  { id: "nvidia", label: "NVIDIA NIM" },
+const PROVIDERS: { id: DirectConfig["activeProvider"]; label: string; note?: string }[] = [
   { id: "openai", label: "OpenAI" },
   { id: "anthropic", label: "Anthropic" },
+  { id: "nvidia", label: "NVIDIA NIM", note: "APK only (no browser CORS)" },
   { id: "ollama", label: "Ollama" },
 ];
 
@@ -149,6 +149,7 @@ export default function SettingsDialog({ open, onClose }: Props) {
                     }`}
                   >
                     {p.label}
+                    {p.note && <span className="ml-1.5 text-[6px] text-white/15 tracking-[0.05em]">({p.note})</span>}
                   </button>
                 ))}
               </div>

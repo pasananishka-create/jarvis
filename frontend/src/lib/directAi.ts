@@ -1,3 +1,5 @@
+import { httpPost, httpPostStream, httpGet } from "./httpClient";
+
 export interface DirectConfig {
   nvidiaKey?: string;
   openaiKey?: string;
@@ -14,13 +16,22 @@ export interface ModelOption {
 }
 
 const DEFAULTS: Record<string, string> = {
-  nvidia: "meta/llama-3.1-8b-instruct",
   openai: "gpt-4o",
+  nvidia: "meta/llama-3.1-8b-instruct",
   anthropic: "claude-sonnet-4-20250514",
   ollama: "llama3.1",
 };
 
 const CURATED_MODELS: Record<string, ModelOption[]> = {
+  openai: [
+    { id: "gpt-4o", name: "GPT-4o" },
+    { id: "gpt-4o-mini", name: "GPT-4o Mini" },
+    { id: "gpt-4-turbo", name: "GPT-4 Turbo" },
+    { id: "gpt-4", name: "GPT-4" },
+    { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" },
+    { id: "o1", name: "o1" },
+    { id: "o3-mini", name: "o3 Mini" },
+  ],
   nvidia: [
     { id: "meta/llama-3.1-8b-instruct", name: "Llama 3.1 8B" },
     { id: "meta/llama-3.1-70b-instruct", name: "Llama 3.1 70B" },
@@ -30,16 +41,6 @@ const CURATED_MODELS: Record<string, ModelOption[]> = {
     { id: "google/gemma-2-27b-it", name: "Gemma 2 27B" },
     { id: "google/gemma-2-9b-it", name: "Gemma 2 9B" },
     { id: "nvidia/llama-3.1-nemotron-70b-instruct", name: "Nemotron 70B" },
-    { id: "nvidia/nemotron-4-340b-reward", name: "Nemotron 4 340B" },
-  ],
-  openai: [
-    { id: "gpt-4o", name: "GPT-4o" },
-    { id: "gpt-4o-mini", name: "GPT-4o Mini" },
-    { id: "gpt-4-turbo", name: "GPT-4 Turbo" },
-    { id: "gpt-4", name: "GPT-4" },
-    { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" },
-    { id: "o1", name: "o1" },
-    { id: "o3-mini", name: "o3 Mini" },
   ],
   anthropic: [
     { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
@@ -89,8 +90,8 @@ export function getConfig(): DirectConfig {
     if (raw) return JSON.parse(raw);
   } catch { /* */ }
   return {
-    activeProvider: "nvidia",
-    activeModel: DEFAULTS.nvidia,
+    activeProvider: "openai",
+    activeModel: DEFAULTS.openai,
   };
 }
 
@@ -115,130 +116,32 @@ export async function fetchLiveModels(provider: string): Promise<ModelOption[]> 
   switch (provider) {
     case "openai": {
       if (!cfg.openaiKey) return getCuratedModels("openai");
-      const resp = await fetch("https://api.openai.com/v1/models", {
-        headers: { Authorization: `Bearer ${cfg.openaiKey}` },
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!resp.ok) return getCuratedModels("openai");
-      const data = await resp.json();
-      const models: ModelOption[] = (data.data || []).map((m: any) => ({ id: m.id, name: m.id }));
-      return models.length > 0 ? models : getCuratedModels("openai");
+      try {
+        const resp = await httpGet("https://api.openai.com/v1/models", {
+          Authorization: `Bearer ${cfg.openaiKey}`,
+        });
+        const models: ModelOption[] = (resp.data.data || []).map((m: any) => ({ id: m.id, name: m.id }));
+        return models.length > 0 ? models : getCuratedModels("openai");
+      } catch {
+        return getCuratedModels("openai");
+      }
     }
     case "ollama": {
       const base = (cfg.ollamaUrl || "http://localhost:11434").replace(/\/+$/, "");
-      const resp = await fetch(`${base}/api/tags`, {
-        signal: AbortSignal.timeout(5000),
-      });
-      if (!resp.ok) return getCuratedModels("ollama");
-      const data = await resp.json();
-      const models: ModelOption[] = (data.models || []).map((m: any) => ({ id: m.name, name: m.name }));
-      return models.length > 0 ? models : getCuratedModels("ollama");
+      try {
+        const resp = await httpGet(`${base}/api/tags`, {});
+        const models: ModelOption[] = (resp.data.models || []).map((m: any) => ({ id: m.name, name: m.name }));
+        return models.length > 0 ? models : getCuratedModels("ollama");
+      } catch {
+        return getCuratedModels("ollama");
+      }
     }
     case "nvidia":
-      // NVIDIA doesn't have an OpenAI-compatible /v1/models endpoint
       return getCuratedModels("nvidia");
     case "anthropic":
       return getCuratedModels("anthropic");
     default:
       return [];
-  }
-}
-
-async function* streamOpenAI(
-  baseUrl: string,
-  body: Record<string, unknown>,
-  apiKey: string,
-): AsyncGenerator<string> {
-  let resp: Response;
-  try {
-    resp = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-      },
-      body: JSON.stringify({ ...body, stream: true }),
-    });
-  } catch (err: unknown) {
-    const msg = err instanceof TypeError
-      ? "Network error — check your connection or the provider may not support browser CORS."
-      : err instanceof Error ? err.message : String(err);
-    throw new Error(msg);
-  }
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => "");
-    throw new Error(`API error ${resp.status}: ${text.slice(0, 300)}`);
-  }
-  const reader = resp.body?.getReader();
-  if (!reader) throw new Error("Streaming not supported in this browser");
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || !trimmed.startsWith("data: ")) continue;
-      const data = trimmed.slice(6);
-      if (data === "[DONE]") return;
-      try {
-        const parsed = JSON.parse(data);
-        const content = parsed.choices?.[0]?.delta?.content;
-        if (content) yield content;
-      } catch { /* skip malformed */ }
-    }
-  }
-}
-
-async function* streamAnthropic(
-  body: Record<string, unknown>,
-  apiKey: string,
-): AsyncGenerator<string> {
-  let resp: Response;
-  try {
-    resp = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({ ...body, stream: true }),
-    });
-  } catch (err: unknown) {
-    const msg = err instanceof TypeError
-      ? "Network error — check your connection or CORS policy."
-      : err instanceof Error ? err.message : String(err);
-    throw new Error(msg);
-  }
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => "");
-    throw new Error(`Anthropic error ${resp.status}: ${text.slice(0, 300)}`);
-  }
-  const reader = resp.body?.getReader();
-  if (!reader) throw new Error("Streaming not supported in this browser");
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || !trimmed.startsWith("data: ")) continue;
-      const data = trimmed.slice(6);
-      try {
-        const parsed = JSON.parse(data);
-        if (parsed.type === "content_block_delta" && parsed.delta?.text) {
-          yield parsed.delta.text;
-        }
-      } catch { /* skip */ }
-    }
   }
 }
 
@@ -250,39 +153,47 @@ export async function* directChat(
   const provider = config.activeProvider;
   const model = config.activeModel || DEFAULTS[provider] || "";
 
-  // Ensure system message is included
   const hasSystem = messages.some((m) => m.role === "system");
   const msgs = hasSystem ? messages : [{ role: "system", content: JARVIS_SYSTEM }, ...messages];
 
   if (provider === "openai") {
     if (!config.openaiKey) throw new Error("OpenAI API key not configured. Open Settings to add one.");
-    yield* streamOpenAI(
-      "https://api.openai.com/v1",
+    yield* httpPostStream(
+      "https://api.openai.com/v1/chat/completions",
       { model, messages: msgs, max_tokens: 4096 },
-      config.openaiKey,
+      { Authorization: `Bearer ${config.openaiKey}` },
+      signal,
+      "openai",
     );
   } else if (provider === "anthropic") {
     if (!config.anthropicKey) throw new Error("Anthropic API key not configured. Open Settings to add one.");
     const system = msgs.find((m) => m.role === "system")?.content || "";
     const chatMsgs = msgs.filter((m) => m.role !== "system");
-    yield* streamAnthropic(
+    yield* httpPostStream(
+      "https://api.anthropic.com/v1/messages",
       { model, messages: chatMsgs, max_tokens: 4096, system },
-      config.anthropicKey,
+      { "x-api-key": config.anthropicKey, "anthropic-version": "2023-06-01" },
+      signal,
+      "anthropic",
     );
   } else if (provider === "ollama") {
     const base = (config.ollamaUrl || "http://localhost:11434").replace(/\/+$/, "") + "/v1";
-    yield* streamOpenAI(
-      base,
+    yield* httpPostStream(
+      `${base}/chat/completions`,
       { model, messages: msgs, options: { num_predict: 4096 } },
-      "",
+      {},
+      signal,
+      "openai",
     );
   } else {
     // nvidia
     if (!config.nvidiaKey) throw new Error("NVIDIA API key not configured. Open Settings to add one.");
-    yield* streamOpenAI(
-      "https://integrate.api.nvidia.com/v1",
+    yield* httpPostStream(
+      "https://integrate.api.nvidia.com/v1/chat/completions",
       { model, messages: msgs, max_tokens: 4096 },
-      config.nvidiaKey,
+      { Authorization: `Bearer ${config.nvidiaKey}` },
+      signal,
+      "openai",
     );
   }
 }
