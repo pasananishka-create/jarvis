@@ -66,10 +66,18 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
   const [files, setFiles] = useState<FileAttachment[]>([]);
+  const [micUnsupported, setMicUnsupported] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const listeningRef = useRef(false);
+  const onSendRef = useRef(onSend);
+  onSendRef.current = onSend;
+
+  useEffect(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) setMicUnsupported(true);
+  }, []);
 
   useEffect(() => {
     if (!disabled) inputRef.current?.focus();
@@ -77,10 +85,12 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
 
   const stopListening = useCallback(() => {
     listeningRef.current = false;
-    try { recognitionRef.current?.stop(); } catch { /* */ }
+    try { recognitionRef.current?.abort(); } catch {}
     recognitionRef.current = null;
     setListening(false);
   }, []);
+
+  useEffect(() => () => stopListening(), [stopListening]);
 
   const removeFile = (id: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== id));
@@ -112,43 +122,66 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
     e?.preventDefault();
     const trimmed = text.trim();
     if ((!trimmed && files.length === 0) || disabled) return;
-    onSend(trimmed, files.length > 0 ? files : undefined);
+    onSendRef.current(trimmed, files.length > 0 ? files : undefined);
     setText("");
     setFiles([]);
   };
 
   const toggleMic = useCallback(() => {
-    if (listening) { stopListening(); return; }
+    if (listeningRef.current) { stopListening(); return; }
+
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return;
+    if (!SR) {
+      setMicUnsupported(true);
+      return;
+    }
+
     const r = new SR();
     r.continuous = false;
     r.interimResults = true;
     r.lang = "en-US";
+
     recognitionRef.current = r;
     listeningRef.current = true;
     setListening(true);
+
     r.onresult = (e: SpeechRecognitionEvent) => {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) {
           const t = e.results[i][0].transcript;
           setText((prev) => prev ? prev + " " + t : t);
-          stopListening();
-          setTimeout(() => {
-            if (t) onSend(t);
-            setText("");
-            inputRef.current?.focus();
-          }, 100);
+          try { r.stop(); } catch {}
+          listeningRef.current = false;
+          recognitionRef.current = null;
+          setListening(false);
+          if (t) onSendRef.current(t);
+          setText("");
+          setTimeout(() => inputRef.current?.focus(), 50);
           return;
         }
       }
     };
-    r.onerror = () => stopListening();
-    r.onend = () => { if (listeningRef.current) stopListening(); };
-    try { r.start(); } catch { stopListening(); }
-  }, [listening, stopListening, onSend]);
 
-  useEffect(() => () => stopListening(), [stopListening]);
+    r.onerror = () => {
+      listeningRef.current = false;
+      recognitionRef.current = null;
+      setListening(false);
+    };
+
+    r.onend = () => {
+      if (listeningRef.current) {
+        listeningRef.current = false;
+        recognitionRef.current = null;
+        setListening(false);
+      }
+    };
+
+    try { r.start(); } catch {
+      listeningRef.current = false;
+      recognitionRef.current = null;
+      setListening(false);
+    }
+  }, [stopListening]);
 
   const canSubmit = (text.trim().length > 0 || files.length > 0) && !disabled;
 
@@ -220,21 +253,33 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
         <button
           type="button"
           onClick={toggleMic}
-          disabled={disabled}
-          className={`shrink-0 rounded-lg transition-all flex items-center justify-center min-h-[48px] min-w-[48px] disabled:opacity-25 ${
-            listening ? "text-[#00E5FF]" : ""
-          }`}
+          onTouchStart={(e) => { e.preventDefault(); toggleMic(); }}
+          disabled={disabled || micUnsupported}
+          className="shrink-0 rounded-lg transition-all flex items-center justify-center min-h-[48px] min-w-[48px] disabled:opacity-25"
           style={{
-            border: `1px solid ${listening ? "rgba(0,229,255,0.4)" : "rgba(0,229,255,0.1)"}`,
+            border: `1px solid ${listening ? "rgba(0,229,255,0.4)" : micUnsupported ? "rgba(255,75,110,0.2)" : "rgba(0,229,255,0.1)"}`,
             background: listening ? "rgba(0,229,255,0.1)" : "rgba(0,229,255,0.03)",
-            color: listening ? "#00E5FF" : "rgba(255,255,255,0.4)",
+            color: listening ? "#00E5FF" : micUnsupported ? "rgba(255,75,110,0.4)" : "rgba(255,255,255,0.4)",
           }}
-          title={listening ? "Stop recording" : "Voice input"}
+          title={micUnsupported ? "Speech recognition unavailable" : listening ? "Stop recording" : "Voice input"}
         >
-          {listening
-            ? <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1.5" /><rect x="14" y="4" width="4" height="16" rx="1.5" /></svg>
-            : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 11a7 7 0 01-14 0M12 2a5 5 0 00-5 5v4a5 5 0 0010 0V7a5 5 0 00-5-5z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5.5 20.5h13" /></svg>
-          }
+          {micUnsupported ? (
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+              <path d="M19 11a7 7 0 01-14 0M12 2a5 5 0 00-5 5v4a5 5 0 0010 0V7a5 5 0 00-5-5z"/>
+              <path d="M5.5 20.5h13"/>
+              <line x1="3" y1="3" x2="21" y2="21" strokeWidth={2}/>
+            </svg>
+          ) : listening ? (
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="6" y="4" width="4" height="16" rx="1.5" />
+              <rect x="14" y="4" width="4" height="16" rx="1.5" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 11a7 7 0 01-14 0M12 2a5 5 0 00-5 5v4a5 5 0 0010 0V7a5 5 0 00-5-5z"/>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5.5 20.5h13"/>
+            </svg>
+          )}
         </button>
 
         <button
