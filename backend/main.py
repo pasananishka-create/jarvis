@@ -458,10 +458,32 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.info("WebSocket disconnected")
     except Exception as e:
         logger.error("WebSocket error: %s", e)
-        try:
-            await websocket.send_json({"type": "error", "content": str(e)})
-        except Exception:
-            pass
+    try:
+        await websocket.send_json({"type": "error", "content": str(e)})
+    except Exception:
+        pass
+
+# ── TTS (edge-tts) ──
+
+class TtsRequest(BaseModel):
+    text: str
+    voice: str = "en-GB-SoniaNeural"
+
+@app.post("/api/tts")
+async def text_to_speech(req: TtsRequest):
+    try:
+        import edge_tts
+        communicate = edge_tts.Communicate(req.text, req.voice)
+        audio_bytes = b""
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_bytes += chunk["data"]
+        from fastapi.responses import Response
+        return Response(content=audio_bytes, media_type="audio/mpeg", headers={"Cache-Control": "no-cache"})
+    except Exception as e:
+        logger.error("TTS error: %s", e)
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 if __name__ == "__main__":
     import uvicorn

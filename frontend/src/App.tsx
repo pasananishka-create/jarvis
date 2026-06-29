@@ -28,9 +28,6 @@ export default function App() {
   const { status, backend } = useJarvis();
   const sound = useSound();
 
-  const [voiceListening, setVoiceListening] = useState(false);
-  const [voiceTranscript, setVoiceTranscript] = useState("");
-
   const [micPermission, setMicPermission] = useState<"granted" | "denied" | "prompt">("prompt");
   const [showPermission, setShowPermission] = useState(false);
 
@@ -109,12 +106,10 @@ export default function App() {
             )}
           </AnimatePresence>
 
-          {/* Voice Mode overlay */}
+          {/* Voice Mode overlay — handles its own speech + AI + TTS */}
           <VoiceMode
             isOpen={view === "voice"}
             onClose={() => { sound.play("shutdown"); setView("home"); }}
-            listening={voiceListening}
-            transcript={voiceTranscript}
           />
         </div>
       )}
