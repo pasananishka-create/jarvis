@@ -103,21 +103,23 @@ export default function SettingsDialog({ open, onClose }: Props) {
   return (
     <AnimatePresence>
       {open && (
-        <>
+        <motion.div
+          key="settings-backdrop"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+        >
           <motion.div
-            className="fixed inset-0 z-50 bg-black/60"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
-          <motion.div
-            className="fixed inset-x-0 bottom-0 z-50 bg-[#1A1A1A] border-t border-white/[0.08] max-h-[85vh] overflow-y-auto"
+            key="settings-panel"
+            className="w-full bg-[#1A1A1A] border-t border-white/[0.08] max-h-[85vh] overflow-y-auto"
             initial={{ y: 300, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 300, opacity: 0 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
             style={{ paddingBottom: "env(safe-area-inset-bottom, 16px)" }}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-white/[0.06]">
               <span className="text-[11px] font-mono tracking-[0.25em] text-white/50">SETTINGS</span>
@@ -207,7 +209,7 @@ export default function SettingsDialog({ open, onClose }: Props) {
               </div>
             </div>
           </motion.div>
-        </>
+        </motion.div>
       )}
     </AnimatePresence>
   );
