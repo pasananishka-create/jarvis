@@ -3,21 +3,11 @@ import { useState, useRef, useCallback, useEffect } from "react";
 const STORAGE_KEY = "jarvis_voice_enabled";
 
 function findJarvisVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
-  const uk = voices.find((v) => /uk|british|daniel/i.test(v.name) && v.lang.startsWith("en"));
+  const uk = voices.find((v) => /uk|british|daniel|oliver|harry/i.test(v.name) && v.lang.startsWith("en"));
   if (uk) return uk;
-  const en = voices.find((v) => /google\s*us|samantha/i.test(v.name) && v.lang.startsWith("en"));
-  if (en) return en;
+  const us = voices.find((v) => /google\s*us|samantha|aaron|fred/i.test(v.name) && v.lang.startsWith("en"));
+  if (us) return us;
   return voices.find((v) => v.lang.startsWith("en")) || null;
-}
-
-function warmupSpeech() {
-  try {
-    const u = new SpeechSynthesisUtterance("");
-    u.volume = 0;
-    u.rate = 1;
-    speechSynthesis.speak(u);
-    setTimeout(() => speechSynthesis.cancel(), 50);
-  } catch { /* */ }
 }
 
 export function useSpeech() {
@@ -35,7 +25,6 @@ export function useSpeech() {
     setSupported(hasSpeech);
     if (!hasSpeech) return;
 
-    // Chrome loads voices asynchronously; poll + event both
     const load = () => {
       const voices = speechSynthesis.getVoices();
       if (voices.length > 0) {
@@ -44,21 +33,27 @@ export function useSpeech() {
     };
     load();
     speechSynthesis.addEventListener("voiceschanged", load);
-    // Retry after a delay for Chrome
-    const t = setTimeout(load, 500);
+    const t = setTimeout(load, 1000);
 
-    // Warm up speech engine on first user click
     const handler = () => {
       if (warmedRef.current) return;
       warmedRef.current = true;
-      warmupSpeech();
+      try {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance("");
+        u.volume = 0;
+        speechSynthesis.speak(u);
+        setTimeout(() => speechSynthesis.cancel(), 100);
+      } catch { /* */ }
     };
     document.addEventListener("pointerdown", handler, { once: true });
+    document.addEventListener("touchstart", handler, { once: true });
 
     return () => {
       speechSynthesis.removeEventListener("voiceschanged", load);
       clearTimeout(t);
       document.removeEventListener("pointerdown", handler);
+      document.removeEventListener("touchstart", handler);
     };
   }, []);
 
@@ -67,27 +62,46 @@ export function useSpeech() {
   }, [voiceEnabled]);
 
   const speak = useCallback((text: string) => {
-    if (!supported) return;
-    stop();
-    const u = new SpeechSynthesisUtterance(text);
-    u.voice = voiceRef.current;
-    u.rate = 0.92;
-    u.pitch = 0.85;
-    u.volume = 1;
-    u.onstart = () => setSpeaking(true);
-    u.onend = () => setSpeaking(false);
-    u.onerror = (e) => { console.warn("[speech] error:", e.error); setSpeaking(false); };
-    utteranceRef.current = u;
-    speechSynthesis.speak(u);
+    if (!supported) {
+      console.warn("[speech] not supported on this browser");
+      return;
+    }
+    try {
+      speechSynthesis.cancel();
+      setSpeaking(false);
+      const u = new SpeechSynthesisUtterance(text);
+      if (voiceRef.current) u.voice = voiceRef.current;
+      u.rate = 0.92;
+      u.pitch = 0.85;
+      u.volume = 1;
+      u.onstart = () => setSpeaking(true);
+      u.onend = () => setSpeaking(false);
+      u.onerror = (e) => {
+        console.warn("[speech] speak error:", e.error);
+        setSpeaking(false);
+      };
+      utteranceRef.current = u;
+      speechSynthesis.speak(u);
+    } catch (err) {
+      console.warn("[speech] exception:", err);
+      setSpeaking(false);
+    }
   }, [supported]);
 
   const stop = useCallback(() => {
-    speechSynthesis.cancel();
+    try {
+      speechSynthesis.cancel();
+    } catch { /* */ }
     setSpeaking(false);
   }, []);
 
   const toggleVoice = useCallback(() => {
     setVoiceEnabled((p) => !p);
+    if (voiceEnabled) stop();
+  }, [voiceEnabled, stop]);
+
+  useEffect(() => {
+    return () => { try { speechSynthesis.cancel(); } catch { /* */ } };
   }, []);
 
   return { voiceEnabled, toggleVoice, speaking, speak, stop, supported };
