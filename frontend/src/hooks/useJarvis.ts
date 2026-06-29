@@ -132,8 +132,10 @@ export function useJarvis() {
       return;
     }
     if (!hasAnyKey()) {
-      onErrorRef.current?.("No API keys in Settings. Tap ⚙️ to add one.");
-      showToast("No API key configured", "error");
+      const label = cfg.activeProvider.charAt(0).toUpperCase() + cfg.activeProvider.slice(1);
+      const msg = `No API key for ${label}. Open Settings to add one.`;
+      onErrorRef.current?.(msg);
+      showToast(msg, "error");
       return;
     }
     const tokenCb = onTokenRef.current;

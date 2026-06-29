@@ -131,8 +131,7 @@ export function saveConfig(c: Partial<DirectConfig>): boolean {
 }
 
 export function hasAnyKey(): boolean {
-  const c = getConfig();
-  return !!(c.openaiKey || c.anthropicKey || c.nvidiaKey || c.ollamaUrl);
+  return hasKeyForProvider(getConfig().activeProvider);
 }
 
 export function hasKeyForProvider(provider: string): boolean {
