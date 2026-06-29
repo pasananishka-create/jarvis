@@ -1,7 +1,16 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 
+export interface FileAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  data?: string;
+  fileId?: string;
+}
+
 interface InputBarProps {
-  onSend: (text: string) => void;
+  onSend: (text: string, files?: FileAttachment[]) => void;
   disabled: boolean;
   onFocusChange?: (focused: boolean) => void;
   modelLabel?: string;
@@ -51,10 +60,14 @@ interface SpeechRecognitionErrorEvent {
   message: string;
 }
 
+let fileIdCounter = 0;
+
 export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }: InputBarProps) {
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
+  const [files, setFiles] = useState<FileAttachment[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const listeningRef = useRef(false);
 
@@ -69,12 +82,39 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
     setListening(false);
   }, []);
 
+  const removeFile = (id: string) => {
+    setFiles((prev) => prev.filter((f) => f.id !== id));
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files;
+    if (!selected) return;
+    const newFiles: FileAttachment[] = [];
+    for (let i = 0; i < selected.length; i++) {
+      const f = selected[i];
+      let data: string | undefined;
+      if (f.type.startsWith("text/") || f.name.endsWith(".md") || f.name.endsWith(".json") || f.name.endsWith(".csv") || f.name.endsWith(".txt") || f.name.endsWith(".py") || f.name.endsWith(".ts") || f.name.endsWith(".tsx") || f.name.endsWith(".js") || f.name.endsWith(".jsx") || f.name.endsWith(".html") || f.name.endsWith(".css") || f.name.endsWith(".xml") || f.name.endsWith(".yaml") || f.name.endsWith(".yml")) {
+        data = await f.text();
+      }
+      newFiles.push({
+        id: `file_${++fileIdCounter}`,
+        name: f.name,
+        size: f.size,
+        type: f.type || "application/octet-stream",
+        data,
+      });
+    }
+    setFiles((prev) => [...prev, ...newFiles]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     const trimmed = text.trim();
-    if (!trimmed || disabled) return;
-    onSend(trimmed);
+    if ((!trimmed && files.length === 0) || disabled) return;
+    onSend(trimmed, files.length > 0 ? files : undefined);
     setText("");
+    setFiles([]);
   };
 
   const toggleMic = useCallback(() => {
@@ -113,7 +153,13 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
 
   useEffect(() => () => stopListening(), [stopListening]);
 
-  const canSubmit = text.trim().length > 0 && !disabled;
+  const canSubmit = (text.trim().length > 0 || files.length > 0) && !disabled;
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes}B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)}KB`;
+    return `${(bytes / 1048576).toFixed(1)}MB`;
+  };
 
   return (
     <form
@@ -127,7 +173,55 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
           </span>
         </div>
       )}
+
+      {files.length > 0 && (
+        <div className="max-w-3xl mx-auto px-3 sm:px-6 pt-2 flex flex-wrap gap-2">
+          {files.map((f) => (
+            <div
+              key={f.id}
+              className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded px-2.5 py-1.5 text-[11px] font-mono text-white/70"
+            >
+              <svg className="w-3 h-3 shrink-0 text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              <span className="truncate max-w-[120px]">{f.name}</span>
+              <span className="text-white/30 ml-0.5">({formatSize(f.size)})</span>
+              <button
+                type="button"
+                onClick={() => removeFile(f.id)}
+                className="text-white/30 hover:text-white/70 ml-0.5 p-0.5"
+              >
+                <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="max-w-3xl mx-auto px-3 sm:px-6 py-2 flex gap-2 items-center">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={disabled}
+          className="shrink-0 rounded-lg border border-white/[0.12] bg-[#222222] text-white/40 hover:text-white/70 hover:border-white/25 transition-all flex items-center justify-center min-h-[48px] min-w-[48px] disabled:opacity-25"
+          title="Attach file"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+          </svg>
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          onChange={handleFileSelect}
+          className="hidden"
+          accept=".pdf,.txt,.md,.json,.csv,.yaml,.yml,.xml,.html,.css,.js,.ts,.tsx,.jsx,.py,.java,.cpp,.rs,.go,.rb,.sh,.bat,.log,.toml,.env,.svg,.png,.jpg,.jpeg,.gif"
+        />
+
         <div className="flex-1 relative">
           <input
             ref={inputRef}
@@ -136,7 +230,7 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
             onChange={(e) => setText(e.target.value)}
             onFocus={() => onFocusChange?.(true)}
             onBlur={() => onFocusChange?.(false)}
-            placeholder="Message..."
+            placeholder={files.length > 0 ? "What should I do with this file?" : "Message..."}
             disabled={disabled}
             enterKeyHint="send"
             className="w-full bg-[#222222] border border-white/[0.12] rounded-lg px-4 py-3 text-[16px] sm:text-sm text-white/85 placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors disabled:opacity-30 font-sans min-h-[48px]"

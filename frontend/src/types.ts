@@ -1,8 +1,15 @@
+export interface FileAttachmentInfo {
+  name: string;
+  size: number;
+  type: string;
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: number;
+  attachments?: FileAttachmentInfo[];
 }
 
 export interface Ability {

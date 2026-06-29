@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -19,6 +19,8 @@ from mark21_features.reminders import load_reminders, add_reminder, add_natural_
 from mark21_core.memory import conversation_history, load_conversation_history, save_conversation_history, remember, recall, load_memory
 from mark21_skills.file_ops import list_dir, read_file, write_file, search_files, grep_files
 from mark21_skills.system import get_system_info, execute_command, git_status, web_search, web_fetch
+from mark21_skills.file_upload import save_upload, list_uploads, get_upload, delete_upload, get_upload_text
+from mark21_skills.pdf_ops import extract_text, edit_pdf, merge_pdfs, split_pdf
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
 logger = logging.getLogger("jarvis.api")
@@ -262,6 +264,12 @@ async def list_skills():
             {"name": "notes", "description": "Manage saved notes"},
             {"name": "reminders", "description": "Manage reminders"},
             {"name": "memory", "description": "Remember and recall facts"},
+            {"name": "files.upload", "description": "Upload a file from device"},
+            {"name": "files.download", "description": "Download/read an uploaded file"},
+            {"name": "files.pdf.extract", "description": "Extract text from a PDF"},
+            {"name": "files.pdf.edit", "description": "Edit a PDF (add/replace text, add/delete pages)"},
+            {"name": "files.pdf.merge", "description": "Merge multiple PDFs into one"},
+            {"name": "files.pdf.split", "description": "Split a PDF into separate pages"},
         ]
     }
 
@@ -304,6 +312,91 @@ async def skill_web_search(body: SearchQuery):
 @app.post("/api/skills/web/fetch")
 async def skill_web_fetch(body: UrlFetch):
     return web_fetch(body.url)
+
+# ── File Upload ──
+
+class UploadResponse(BaseModel):
+    file_id: str
+    name: str
+    stored_name: str
+    path: str
+    size: int
+    size_kb: float
+
+@app.post("/api/skills/files/upload")
+async def skill_upload_file(file: bytes = File(...), filename: str = Form(...)):
+    result = save_upload(file, filename)
+    if "error" in result:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=400, content=result)
+    return result
+
+@app.get("/api/skills/files/uploads")
+async def skill_list_uploads():
+    return list_uploads()
+
+@app.get("/api/skills/files/download/{file_id}")
+async def skill_download_file(file_id: str):
+    info = get_upload(file_id)
+    if not info:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=404, content={"error": "File not found"})
+    from fastapi.responses import Response
+    return Response(content=info["data"], media_type="application/octet-stream", headers={"Content-Disposition": f'attachment; filename="{info["name"]}"'})
+
+@app.delete("/api/skills/files/uploads/{file_id}")
+async def skill_delete_upload(file_id: str):
+    return delete_upload(file_id)
+
+# ── PDF Operations ──
+
+class PdfExtractRequest(BaseModel):
+    path: str
+
+class PdfEditOperation(BaseModel):
+    type: str
+    page: int = 1
+    text: str = ""
+    old: str = ""
+    new: str = ""
+    x: float = 50
+    y: float = 50
+    fontsize: float = 11
+    font: str = "helv"
+    color: list[float] = [0, 0, 0]
+    width: float = 595
+    height: float = 842
+
+class PdfEditRequest(BaseModel):
+    path: str
+    operations: list[PdfEditOperation]
+    output: str = ""
+
+class PdfMergeRequest(BaseModel):
+    paths: list[str]
+    output: str
+
+class PdfSplitRequest(BaseModel):
+    path: str
+    pages: list[int] = []
+    output_dir: str = ""
+
+@app.post("/api/skills/files/pdf/extract")
+async def skill_pdf_extract(body: PdfExtractRequest):
+    return extract_text(body.path)
+
+@app.post("/api/skills/files/pdf/edit")
+async def skill_pdf_edit(body: PdfEditRequest):
+    ops = [op.model_dump() for op in body.operations]
+    return edit_pdf(body.path, ops, body.output)
+
+@app.post("/api/skills/files/pdf/merge")
+async def skill_pdf_merge(body: PdfMergeRequest):
+    return merge_pdfs(body.paths, body.output)
+
+@app.post("/api/skills/files/pdf/split")
+async def skill_pdf_split(body: PdfSplitRequest):
+    return split_pdf(body.path, body.pages or None, body.output_dir)
 
 # ── WebSocket ──
 

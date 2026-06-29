@@ -6,7 +6,7 @@ import { useSpeech } from "../hooks/useSpeech";
 import type { Message, BackendInfo } from "../types";
 import Header from "./Header";
 import CentralRing from "./CentralRing";
-import InputBar from "./InputBar";
+import InputBar, { type FileAttachment } from "./InputBar";
 import SkillsPanel from "./SkillsPanel";
 
 type ChatState = "idle" | "listening" | "processing" | "responding" | "error";
@@ -223,6 +223,20 @@ function MessagesList({
                     <MessageContent content={msg.content} />
                   )}
                 </p>
+                {msg.attachments && msg.attachments.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {msg.attachments.map((a, i) => (
+                      <div key={i} className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded px-2.5 py-1.5 text-[10px] font-mono text-white/50">
+                        <svg className="w-3 h-3 shrink-0 text-white/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        <span className="truncate max-w-[100px]">{a.name}</span>
+                        <span className="text-white/20">({(a.size / 1024).toFixed(1)}KB)</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -293,12 +307,24 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
   }, [onToken, onDone, onError]);
 
   const handleSend = useCallback(
-    (text: string) => {
+    (text: string, files?: FileAttachment[]) => {
+      let enriched = text;
+      if (files && files.length > 0) {
+        const fileBlocks = files.map((f) => {
+          const header = `[Attached file: ${f.name} (${(f.size / 1024).toFixed(1)}KB)]`;
+          if (f.data) {
+            return `${header}\n\`\`\`\n${f.data.slice(0, 50000)}\n\`\`\``;
+          }
+          return `${header} (binary — use backend skills to process)`;
+        });
+        enriched = fileBlocks.join("\n\n") + (text ? `\n\n${text}` : "");
+      }
       const userMsg: Message = {
         id: `u-${Date.now()}`,
         role: "user",
-        content: text,
+        content: enriched,
         timestamp: Date.now(),
+        attachments: files?.map((f) => ({ name: f.name, size: f.size, type: f.type })),
       };
       setMessages((prev) => [...prev, userMsg]);
       streamTextRef.current = "";
@@ -306,7 +332,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
       setThinking(true);
       setChatState("processing");
       setErrorMsg(null);
-      sendMessage(text);
+      sendMessage(enriched);
       scrollToBottom();
     },
     [sendMessage, scrollToBottom]
