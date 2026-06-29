@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import type { ConnectionStatus, BackendInfo } from "../types";
 import SettingsDialog from "./SettingsDialog";
 import { useState } from "react";
@@ -10,6 +9,7 @@ interface HeaderProps {
   voiceEnabled: boolean;
   voiceSpeaking: boolean;
   onToggleVoice: () => void;
+  onSkillsOpen: () => void;
 }
 
 function StatusDot({ status }: { status: ConnectionStatus }) {
@@ -31,7 +31,7 @@ const statusLabels: Record<ConnectionStatus, string> = {
   disconnected: "OFF",
 };
 
-export default function Header({ status, backendInfo, onClear, voiceEnabled, voiceSpeaking, onToggleVoice }: HeaderProps) {
+export default function Header({ status, backendInfo, onClear, voiceEnabled, voiceSpeaking, onToggleVoice, onSkillsOpen }: HeaderProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const currentBackend = backendInfo.active.split(" ")[0];
@@ -54,6 +54,16 @@ export default function Header({ status, backendInfo, onClear, voiceEnabled, voi
         </div>
 
         <div className="flex items-center gap-0.5">
+          <button
+            onClick={onSkillsOpen}
+            className="text-white/40 hover:text-white/70 p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            title="View JARVIS skills"
+          >
+            <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+          </button>
+
           <button
             onClick={onToggleVoice}
             className={`p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${

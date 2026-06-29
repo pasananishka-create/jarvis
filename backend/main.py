@@ -17,6 +17,8 @@ from mark21_api.stock_data import get_market_data
 from mark21_features.notes import load_notes, add_note, delete_note
 from mark21_features.reminders import load_reminders, add_reminder, add_natural_reminder, start_reminder_checker, on_reminder_due
 from mark21_core.memory import conversation_history, load_conversation_history, save_conversation_history, remember, recall, load_memory
+from mark21_skills.file_ops import list_dir, read_file, write_file, search_files, grep_files
+from mark21_skills.system import get_system_info, execute_command, git_status, web_search, web_fetch
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
 logger = logging.getLogger("jarvis.api")
@@ -211,6 +213,97 @@ async def get_due_reminders():
     items = list(reminder_queue)
     reminder_queue.clear()
     return {"reminders": items}
+
+# ── Skills ──
+
+class SkillPath(BaseModel):
+    path: str = "."
+
+class FileRead(BaseModel):
+    path: str
+
+class FileWrite(BaseModel):
+    path: str
+    content: str
+
+class SearchQuery(BaseModel):
+    query: str
+    path: str = "."
+    num: int = 5
+
+class GrepQuery(BaseModel):
+    query: str
+    path: str = "."
+
+class CommandRun(BaseModel):
+    command: str
+    timeout: int = 30
+
+class UrlFetch(BaseModel):
+    url: str
+
+@app.get("/api/skills")
+async def list_skills():
+    return {
+        "skills": [
+            {"name": "files.list", "description": "List directory contents"},
+            {"name": "files.read", "description": "Read a file"},
+            {"name": "files.write", "description": "Write/create a file"},
+            {"name": "files.search", "description": "Find files by name pattern"},
+            {"name": "files.grep", "description": "Search file contents for text"},
+            {"name": "system.info", "description": "Get system information"},
+            {"name": "system.command", "description": "Run a shell command"},
+            {"name": "git.status", "description": "Show git status"},
+            {"name": "web.search", "description": "Search the web via DuckDuckGo"},
+            {"name": "web.fetch", "description": "Fetch a web page"},
+            {"name": "weather", "description": "Get current weather"},
+            {"name": "news", "description": "Get tech news headlines"},
+            {"name": "stocks", "description": "Get stock market data"},
+            {"name": "notes", "description": "Manage saved notes"},
+            {"name": "reminders", "description": "Manage reminders"},
+            {"name": "memory", "description": "Remember and recall facts"},
+        ]
+    }
+
+@app.post("/api/skills/files/list")
+async def skill_list_dir(body: SkillPath):
+    return list_dir(body.path)
+
+@app.post("/api/skills/files/read")
+async def skill_read_file(body: FileRead):
+    return read_file(body.path)
+
+@app.post("/api/skills/files/write")
+async def skill_write_file(body: FileWrite):
+    return write_file(body.path, body.content)
+
+@app.post("/api/skills/files/search")
+async def skill_search_files(body: SearchQuery):
+    return search_files(body.query, body.path)
+
+@app.post("/api/skills/files/grep")
+async def skill_grep(body: GrepQuery):
+    return grep_files(body.query, body.path)
+
+@app.get("/api/skills/system/info")
+async def skill_system_info():
+    return get_system_info()
+
+@app.post("/api/skills/system/command")
+async def skill_command(body: CommandRun):
+    return execute_command(body.command, body.timeout)
+
+@app.get("/api/skills/git/status")
+async def skill_git_status():
+    return git_status()
+
+@app.post("/api/skills/web/search")
+async def skill_web_search(body: SearchQuery):
+    return web_search(body.query, body.num)
+
+@app.post("/api/skills/web/fetch")
+async def skill_web_fetch(body: UrlFetch):
+    return web_fetch(body.url)
 
 # ── WebSocket ──
 

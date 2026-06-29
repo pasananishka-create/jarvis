@@ -7,6 +7,7 @@ import type { Message, BackendInfo } from "../types";
 import Header from "./Header";
 import CentralRing from "./CentralRing";
 import InputBar from "./InputBar";
+import SkillsPanel from "./SkillsPanel";
 
 type ChatState = "idle" | "listening" | "processing" | "responding" | "error";
 
@@ -232,6 +233,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
   const [chatState, setChatState] = useState<ChatState>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [inputFocused, setInputFocused] = useState(false);
+  const [skillsOpen, setSkillsOpen] = useState(false);
   const streamTextRef = useRef("");
   const speakRef = useRef(speak);
   const voiceRef = useRef(voiceEnabled);
@@ -344,7 +346,9 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
         voiceEnabled={voiceEnabled}
         voiceSpeaking={speaking}
         onToggleVoice={toggleVoice}
+        onSkillsOpen={() => setSkillsOpen(true)}
       />
+      <SkillsPanel open={skillsOpen} onClose={() => setSkillsOpen(false)} status={status} />
 
       <div className="flex-1 flex flex-col min-h-0 relative">
         <AnimatePresence>
