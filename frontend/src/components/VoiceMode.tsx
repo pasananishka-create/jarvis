@@ -74,6 +74,9 @@ export default function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
   const [aiResponse, setAiResponse] = useState("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const processRef = useRef<(text: string) => void>(() => {});
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   const { play, stop: stopTts } = useTts();
 
   // Stop recognition
@@ -112,13 +115,12 @@ export default function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
 
     r.onerror = () => {
       stopRecognition();
-      // If we got some text, process it; otherwise go back to idle
-      if (finalTranscript) processInput(finalTranscript);
+      if (finalTranscript) processRef.current(finalTranscript);
       else setPhase("idle");
     };
 
     r.onend = () => {
-      if (finalTranscript) processInput(finalTranscript);
+      if (finalTranscript) processRef.current(finalTranscript);
       else setPhase("idle");
     };
 
@@ -143,13 +145,15 @@ export default function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
       }
 
       setPhase("done");
-      // Auto-close after 2s
-      setTimeout(() => onClose(), 2000);
+      setTimeout(() => closeRef.current(), 2000);
     } catch {
       setPhase("done");
-      setTimeout(() => onClose(), 1500);
+      setTimeout(() => closeRef.current(), 1500);
     }
-  }, [play, onClose]);
+  }, [play]);
+
+  // Keep refs in sync
+  processRef.current = processInput;
 
   // Start listening when the overlay opens
   useEffect(() => {
@@ -267,7 +271,7 @@ export default function VoiceMode({ isOpen, onClose }: VoiceModeProps) {
           {/* Header */}
           <div className="relative z-10 flex justify-between items-center px-5 pt-5">
             <motion.button
-              onClick={() => { stopRecognition(); stopTts(); onClose(); }}
+              onClick={() => { stopRecognition(); stopTts(); closeRef.current(); }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="flex items-center gap-2 px-4 py-2 rounded-full"
