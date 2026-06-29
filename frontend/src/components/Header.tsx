@@ -1,25 +1,29 @@
-import type { ConnectionStatus, BackendInfo } from "../types";
+import type { ConnectionStatus } from "../types";
 import SettingsDialog from "./SettingsDialog";
 import { useState } from "react";
 
 interface HeaderProps {
   status: ConnectionStatus;
-  backendInfo: BackendInfo;
+  backendInfo: { active: string; available: string[] };
   onClear: () => void;
   voiceEnabled: boolean;
   voiceSpeaking: boolean;
   onToggleVoice: () => void;
   onSkillsOpen: () => void;
+  onBack?: () => void;
 }
 
 function StatusDot({ status }: { status: ConnectionStatus }) {
-  const color = status === "connected" ? "#FFFFFF"
-    : status === "direct" ? "#FFFFFF"
-    : "#555555";
+  const colors: Record<ConnectionStatus, string> = {
+    connected: "#00FFC8",
+    connecting: "#FFC857",
+    direct: "#3B82F6",
+    disconnected: "#FF4B6E",
+  };
   return (
     <div
       className="rounded-full shrink-0"
-      style={{ width: 4, height: 4, backgroundColor: color }}
+      style={{ width: 4, height: 4, backgroundColor: colors[status], boxShadow: `0 0 6px ${colors[status]}40` }}
     />
   );
 }
@@ -31,7 +35,7 @@ const statusLabels: Record<ConnectionStatus, string> = {
   disconnected: "OFF",
 };
 
-export default function Header({ status, backendInfo, onClear, voiceEnabled, voiceSpeaking, onToggleVoice, onSkillsOpen }: HeaderProps) {
+export default function Header({ status, backendInfo, onClear, voiceEnabled, voiceSpeaking, onToggleVoice, onSkillsOpen, onBack }: HeaderProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const currentBackend = backendInfo.active.split(" ")[0];
@@ -42,13 +46,23 @@ export default function Header({ status, backendInfo, onClear, voiceEnabled, voi
   const opacity = status === "disconnected" ? "opacity-40" : "opacity-100";
 
   return (
-    <header className={`border-b border-white/[0.08] bg-[#1A1A1A] safe-top ${opacity}`}>
+    <header className={`safe-top ${opacity}`} style={{ borderBottom: "1px solid rgba(0,229,255,0.06)", background: "rgba(4,6,11,0.8)", backdropFilter: "blur(20px)" }}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 flex items-center justify-between h-12">
         <div className="flex items-center gap-3 min-w-0">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="text-white/40 hover:text-white/70 p-2 rounded-lg transition-all min-h-[44px] min-w-[44px] flex items-center justify-center"
+            >
+              <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+            </button>
+          )}
           <StatusDot status={status} />
-          <span className="text-[10px] font-mono tracking-[0.25em] text-white/80">{statusLabels[status]}</span>
-          <span className="text-white/[0.08]">/</span>
-          <span className="text-[8px] font-mono text-white/40 truncate max-w-[80px] sm:max-w-[160px]">
+          <span className="text-[10px] font-mono tracking-[0.25em] text-white/60">{statusLabels[status]}</span>
+          <span className="text-white/[0.06]">/</span>
+          <span className="text-[8px] font-mono text-white/30 truncate max-w-[80px] sm:max-w-[160px]">
             {currentModel || currentBackend}
           </span>
         </div>
@@ -56,8 +70,8 @@ export default function Header({ status, backendInfo, onClear, voiceEnabled, voi
         <div className="flex items-center gap-0.5">
           <button
             onClick={onSkillsOpen}
-            className="text-white/40 hover:text-white/70 p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-            title="View JARVIS skills"
+            className="text-white/30 hover:text-white/60 p-2.5 rounded-lg transition-all min-h-[44px] min-w-[44px] flex items-center justify-center"
+            title="Skills"
           >
             <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
@@ -66,8 +80,8 @@ export default function Header({ status, backendInfo, onClear, voiceEnabled, voi
 
           <button
             onClick={onToggleVoice}
-            className={`p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${
-              voiceSpeaking ? "text-white" : voiceEnabled ? "text-white/70 hover:text-white" : "text-white/20 hover:text-white/40"
+            className={`p-2.5 rounded-lg transition-all min-h-[44px] min-w-[44px] flex items-center justify-center ${
+              voiceSpeaking ? "text-[#00E5FF]" : voiceEnabled ? "text-white/60 hover:text-white/80" : "text-white/20 hover:text-white/40"
             }`}
             title={voiceEnabled ? "Voice on" : "Voice off"}
           >
@@ -88,7 +102,7 @@ export default function Header({ status, backendInfo, onClear, voiceEnabled, voi
 
           <button
             onClick={() => setSettingsOpen(true)}
-            className="text-white/40 hover:text-white/70 p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="text-white/30 hover:text-white/60 p-2.5 rounded-lg transition-all min-h-[44px] min-w-[44px] flex items-center justify-center"
             title="Settings"
           >
             <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
@@ -99,7 +113,7 @@ export default function Header({ status, backendInfo, onClear, voiceEnabled, voi
 
           <button
             onClick={onClear}
-            className="text-white/30 hover:text-white/60 p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="text-white/20 hover:text-white/40 p-2.5 rounded-lg transition-all min-h-[44px] min-w-[44px] flex items-center justify-center"
             title="Clear"
           >
             <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>

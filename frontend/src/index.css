@@ -1,25 +1,23 @@
 @import "tailwindcss";
 
-/* Brighter Nothing OS-inspired theme — lighter backgrounds, higher contrast */
+/* ── J.A.R.V.I.S. Design System 2026 ── */
 
 @theme {
-  --color-nothing-black: #000000;
-  --color-nothing-white: #FFFFFF;
-  --color-nothing-light: #F5F5F5;
-  --color-nothing-gray-100: #E8E8E8;
-  --color-nothing-gray-200: #CCCCCC;
-  --color-nothing-gray-300: #999999;
-  --color-nothing-gray-400: #666666;
-  --color-nothing-gray-500: #444444;
-  --color-nothing-gray-600: #333333;
-  --color-nothing-gray-700: #2A2A2A;
-  --color-nothing-gray-800: #1E1E1E;
-  --color-nothing-gray-900: #141414;
-  --color-nothing-accent: #FFFFFF;
-  --color-nothing-red: #FF4444;
+  --color-jv-bg: #04060B;
+  --color-jv-bg2: #0A1020;
+  --color-jv-surface: #111827;
+  --color-jv-card: rgba(255,255,255,0.04);
+  --color-jv-accent: #00E5FF;
+  --color-jv-accent2: #3B82F6;
+  --color-jv-highlight: #00FFC8;
+  --color-jv-warn: #FFC857;
+  --color-jv-danger: #FF4B6E;
+  --color-jv-text: #FFFFFF;
+  --color-jv-text2: rgba(255,255,255,0.65);
+  --color-jv-border: rgba(0,229,255,0.15);
+  --color-jv-glow: rgba(0,229,255,0.35);
   --font-sans: "Inter", "SF Pro Display", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
-  --font-dot: "JetBrains Mono", monospace;
 }
 
 * {
@@ -32,25 +30,19 @@
 html, body, #root {
   height: 100%;
   overflow: hidden;
-  background: #141414;
-  color: #F0F0F0;
+  background: #04060B;
+  color: rgba(255,255,255,0.9);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-::-webkit-scrollbar {
-  width: 2px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-}
+::-webkit-scrollbar { width: 2px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,229,255,0.15); }
 
 ::selection {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(0,229,255,0.2);
   color: #FFFFFF;
 }
 
@@ -59,12 +51,6 @@ html, body, #root {
 }
 @supports (padding-top: env(safe-area-inset-top)) {
   .safe-top { padding-top: env(safe-area-inset-top, 0px); }
-}
-@supports (padding-left: env(safe-area-inset-left)) {
-  .safe-left { padding-left: env(safe-area-inset-left, 0px); }
-}
-@supports (padding-right: env(safe-area-inset-right)) {
-  .safe-right { padding-right: env(safe-area-inset-right, 0px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -81,14 +67,8 @@ html, body, #root {
     -webkit-overflow-scrolling: touch;
     touch-action: manipulation;
   }
-
-  input, textarea, select {
-    font-size: 16px !important;
-  }
-
-  button, a, select {
-    min-height: 48px;
-  }
+  input, textarea, select { font-size: 16px !important; }
+  button, a, select { min-height: 48px; }
 }
 
 .gpu-layer {
@@ -96,7 +76,18 @@ html, body, #root {
   will-change: transform, opacity;
 }
 
-.glyph {
-  letter-spacing: 0.15em;
-  font-weight: 300;
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
 }

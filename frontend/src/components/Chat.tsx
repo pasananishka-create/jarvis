@@ -5,7 +5,7 @@ import { useJarvis } from "../hooks/useJarvis";
 import { useSpeech } from "../hooks/useSpeech";
 import type { Message, BackendInfo } from "../types";
 import Header from "./Header";
-import CentralRing from "./CentralRing";
+import AICore from "./AICore";
 import InputBar, { type FileAttachment } from "./InputBar";
 import SkillsPanel from "./SkillsPanel";
 
@@ -34,8 +34,13 @@ function Toast({ message, type, onDismiss }: { message: string; type: "success" 
   useEffect(() => { const t = setTimeout(onDismiss, 3000); return () => clearTimeout(t); }, [onDismiss]);
   return (
     <motion.div
-      className="fixed top-14 left-1/2 -translate-x-1/2 z-50 px-4 py-2 border border-white/[0.15] bg-[#222] text-[9px] font-mono tracking-[0.15em]"
-      style={{ color: type === "error" ? "rgba(255,68,68,0.8)" : "rgba(255,255,255,0.7)" }}
+      className="fixed top-14 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 text-[9px] font-mono tracking-[0.15em] rounded-lg"
+      style={{
+        background: type === "error" ? "rgba(255,75,110,0.1)" : "rgba(0,255,200,0.08)",
+        border: type === "error" ? "1px solid rgba(255,75,110,0.2)" : "1px solid rgba(0,255,200,0.15)",
+        backdropFilter: "blur(16px)",
+        color: type === "error" ? "rgba(255,75,110,0.8)" : "rgba(0,255,200,0.7)",
+      }}
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12 }}
@@ -187,56 +192,69 @@ function MessagesList({
           className="mb-4 sm:mb-5"
         >
           <div className="max-w-3xl mx-auto px-4 sm:px-6">
-            <div className="flex items-start gap-3">
-              <div className={`w-[18px] h-[18px] shrink-0 mt-0.5 flex items-center justify-center border ${
-                msg.role === "assistant" ? "border-white/25" : "border-white/12"
-              }`}>
-                {msg.role === "assistant" ? (
-                  <motion.svg className="w-[10px] h-[10px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
+            <div className={`flex items-start gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+              {msg.role === "assistant" ? (
+                <div className="w-[22px] h-[22px] shrink-0 mt-0.5 rounded-full flex items-center justify-center" style={{ background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.2)" }}>
+                  <motion.svg className="w-[10px] h-[10px]" viewBox="0 0 24 24" fill="none" stroke="#00E5FF" strokeWidth={1.5}
                     animate={speaking ? { opacity: [1, 0.4, 1] } : {}}
                     transition={{ duration: 1.2, repeat: Infinity }}
                   >
                     <circle cx="12" cy="12" r="10"/>
                     <circle cx="12" cy="12" r="4"/>
-                    <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+                    <circle cx="12" cy="12" r="1.5" fill="#00E5FF"/>
                   </motion.svg>
-                ) : (
-                  <svg className="w-[10px] h-[10px] text-white/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                </div>
+              ) : (
+                <div className="w-[22px] h-[22px] shrink-0 mt-0.5 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <svg className="w-[9px] h-[9px] text-white/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
                     <circle cx="12" cy="12" r="5"/>
                     <path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>
                   </svg>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-[8px] font-mono tracking-[0.2em] ${
-                    msg.role === "assistant" ? "text-white/60" : "text-white/40"
-                  }`}>
-                    {msg.role === "assistant" ? "J.A.R.V.I.S." : "YOU"}
-                  </span>
-                  <MessageTime ts={msg.timestamp} />
                 </div>
-                <p className="text-[14px] sm:text-sm leading-[1.7] sm:leading-relaxed font-sans text-white/90 whitespace-pre-wrap">
-                  {msg.role === "assistant" && respondingId === msg.id && !reduced ? (
-                    <WordByWordText text={msg.content} reduced={reduced} />
-                  ) : (
-                    <MessageContent content={msg.content} />
-                  )}
-                </p>
-                {msg.attachments && msg.attachments.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {msg.attachments.map((a, i) => (
-                      <div key={i} className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded px-2.5 py-1.5 text-[10px] font-mono text-white/50">
-                        <svg className="w-3 h-3 shrink-0 text-white/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-                          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-                          <polyline points="14 2 14 8 20 8"/>
-                        </svg>
-                        <span className="truncate max-w-[100px]">{a.name}</span>
-                        <span className="text-white/20">({(a.size / 1024).toFixed(1)}KB)</span>
-                      </div>
-                    ))}
+              )}
+              <div className="min-w-0 flex-1" style={{ maxWidth: "85%" }}>
+                <div
+                  className="rounded-xl px-4 py-3"
+                  style={{
+                    background: msg.role === "assistant"
+                      ? "rgba(0,229,255,0.04)"
+                      : "rgba(255,255,255,0.03)",
+                    border: msg.role === "assistant"
+                      ? "1px solid rgba(0,229,255,0.1)"
+                      : "1px solid rgba(255,255,255,0.06)",
+                    backdropFilter: "blur(12px)",
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className={`text-[7px] font-mono tracking-[0.2em] ${
+                      msg.role === "assistant" ? "text-[#00E5FF]/60" : "text-white/40"
+                    }`}>
+                      {msg.role === "assistant" ? "J.A.R.V.I.S." : "YOU"}
+                    </span>
+                    <MessageTime ts={msg.timestamp} />
                   </div>
-                )}
+                  <p className="text-[14px] sm:text-sm leading-[1.7] sm:leading-relaxed font-sans text-white/85 whitespace-pre-wrap">
+                    {msg.role === "assistant" && respondingId === msg.id && !reduced ? (
+                      <WordByWordText text={msg.content} reduced={reduced} />
+                    ) : (
+                      <MessageContent content={msg.content} />
+                    )}
+                  </p>
+                  {msg.attachments && msg.attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2 pt-2" style={{ borderTop: "1px solid rgba(0,229,255,0.06)" }}>
+                      {msg.attachments.map((a, i) => (
+                        <div key={i} className="flex items-center gap-1.5 rounded px-2 py-1 text-[10px] font-mono text-white/50" style={{ background: "rgba(0,229,255,0.05)" }}>
+                          <svg className="w-3 h-3 shrink-0 text-[#00E5FF]/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                          </svg>
+                          <span className="truncate max-w-[100px]">{a.name}</span>
+                          <span className="text-white/20">({(a.size / 1024).toFixed(1)}KB)</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -246,7 +264,7 @@ function MessagesList({
   );
 }
 
-export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }) {
+export default function Chat({ keyboardHeight = 0, onBackToHome }: { keyboardHeight?: number; onBackToHome?: () => void }) {
   const { status, backend, models, toast, sendMessage, sendCommand, onToken, onDone, onError, dismissToast } = useJarvis();
   const { voiceEnabled, toggleVoice, speaking, speak } = useSpeech();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -368,7 +386,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
     : backend;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-[#1A1A1A]" style={{ paddingBottom: keyboardHeight }}>
+    <div className="flex flex-col flex-1 min-h-0" style={{ backgroundColor: "transparent", paddingBottom: keyboardHeight }}>
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} onDismiss={dismissToast} />}
       </AnimatePresence>
@@ -381,6 +399,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
         voiceSpeaking={speaking}
         onToggleVoice={toggleVoice}
         onSkillsOpen={() => setSkillsOpen(true)}
+        onBack={onBackToHome}
       />
       <SkillsPanel open={skillsOpen} onClose={() => setSkillsOpen(false)} status={status} />
 
@@ -398,7 +417,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
               exit={{ opacity: 0 }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             >
-              <CentralRing state={chatState} />
+              <AICore state={chatState === "processing" ? "thinking" : chatState === "responding" ? "speaking" : "idle"} size={140} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -413,7 +432,8 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
               transition={{ duration: 0.5, delay: 0.3 }}
             >
               <motion.p
-                className="text-[10px] font-mono tracking-[0.2em] text-white/30 mb-5 text-center leading-relaxed max-w-xs"
+                className="text-[10px] font-mono tracking-[0.2em] mb-5 text-center leading-relaxed max-w-xs"
+                style={{ color: "rgba(0,229,255,0.4)" }}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.5 }}
@@ -426,12 +446,15 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
                   <motion.button
                     key={action}
                     onClick={() => handleSend(action)}
-                    className="text-[9px] font-mono tracking-[0.1em] text-white/40 hover:text-white/70 border border-white/10 hover:border-white/25 px-3.5 py-2 transition-all min-h-[36px]"
+                    className="text-[9px] font-mono tracking-[0.1em] px-3.5 py-2 min-h-[36px] rounded-lg"
+                    style={{
+                      color: "rgba(255,255,255,0.4)",
+                      border: "1px solid rgba(0,229,255,0.1)",
+                      background: "rgba(0,229,255,0.03)",
+                    }}
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.7 + i * 0.06 }}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
                   >
                     {action}
                   </motion.button>
@@ -464,35 +487,45 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                     >
-                      <div className="max-w-3xl mx-auto px-4 sm:px-6">
+                        <div className="max-w-3xl mx-auto px-4 sm:px-6">
                         <div className="flex items-start gap-3">
-                          <div className="w-[18px] h-[18px] shrink-0 mt-0.5 flex items-center justify-center border border-white/25">
-                            <motion.svg className="w-[10px] h-[10px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
+                          <div className="w-[22px] h-[22px] shrink-0 mt-0.5 rounded-full flex items-center justify-center" style={{ background: "rgba(0,229,255,0.1)", border: "1px solid rgba(0,229,255,0.2)" }}>
+                            <motion.svg className="w-[10px] h-[10px]" viewBox="0 0 24 24" fill="none" stroke="#00E5FF" strokeWidth={1.5}
                               animate={speaking ? { opacity: [1, 0.4, 1] } : {}}
                               transition={{ duration: 1.2, repeat: Infinity }}
                             >
                               <circle cx="12" cy="12" r="10"/>
                               <circle cx="12" cy="12" r="4"/>
-                              <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+                              <circle cx="12" cy="12" r="1.5" fill="#00E5FF"/>
                             </motion.svg>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-[8px] font-mono tracking-[0.2em] text-white/60">J.A.R.V.I.S.</span>
+                          <div className="min-w-0 flex-1" style={{ maxWidth: "85%" }}>
+                            <div
+                              className="rounded-xl px-4 py-3"
+                              style={{
+                                background: "rgba(0,229,255,0.04)",
+                                border: "1px solid rgba(0,229,255,0.1)",
+                                backdropFilter: "blur(12px)",
+                              }}
+                            >
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <span className="text-[7px] font-mono tracking-[0.2em] text-[#00E5FF]/60">J.A.R.V.I.S.</span>
+                              </div>
+                              <p className="text-[14px] sm:text-sm leading-relaxed font-sans text-white/85 whitespace-pre-wrap">
+                                {streamingText ? (
+                                  <>{streamingText}<motion.span
+                                    className="inline-block w-[1.5px] h-[13px] ml-0.5 align-text-bottom"
+                                    style={{ backgroundColor: "#00E5FF", boxShadow: "0 0 6px rgba(0,229,255,0.5)" }}
+                                    animate={{ opacity: [1, 0.2] }}
+                                    transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse" }}
+                                  /></>
+                                ) : (
+                                  <span className="inline-flex items-center text-[10px] font-mono tracking-[0.1em] text-white/50">
+                                    Processing<BouncingDots />
+                                  </span>
+                                )}
+                              </p>
                             </div>
-                            <p className="text-[14px] sm:text-sm leading-relaxed font-sans text-white/90 whitespace-pre-wrap">
-                              {streamingText ? (
-                                <>{streamingText}<motion.span
-                                  className="inline-block w-[1.5px] h-[13px] bg-white/50 ml-0.5 align-text-bottom"
-                                  animate={{ opacity: [1, 0] }}
-                                  transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse" }}
-                                /></>
-                              ) : (
-                                <span className="inline-flex items-center text-[10px] font-mono tracking-[0.1em] text-white/50">
-                                  Processing<BouncingDots />
-                                </span>
-                              )}
-                            </p>
                           </div>
                         </div>
                       </div>

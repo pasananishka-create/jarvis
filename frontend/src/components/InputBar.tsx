@@ -93,7 +93,7 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
     for (let i = 0; i < selected.length; i++) {
       const f = selected[i];
       let data: string | undefined;
-      if (f.type.startsWith("text/") || f.name.endsWith(".md") || f.name.endsWith(".json") || f.name.endsWith(".csv") || f.name.endsWith(".txt") || f.name.endsWith(".py") || f.name.endsWith(".ts") || f.name.endsWith(".tsx") || f.name.endsWith(".js") || f.name.endsWith(".jsx") || f.name.endsWith(".html") || f.name.endsWith(".css") || f.name.endsWith(".xml") || f.name.endsWith(".yaml") || f.name.endsWith(".yml")) {
+      if (f.type.startsWith("text/") || /\.(md|json|csv|txt|py|ts|tsx|js|jsx|html|css|xml|yaml|yml)$/i.test(f.name)) {
         data = await f.text();
       }
       newFiles.push({
@@ -119,10 +119,8 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
 
   const toggleMic = useCallback(() => {
     if (listening) { stopListening(); return; }
-
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
-
     const r = new SR();
     r.continuous = false;
     r.interimResults = true;
@@ -130,7 +128,6 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
     recognitionRef.current = r;
     listeningRef.current = true;
     setListening(true);
-
     r.onresult = (e: SpeechRecognitionEvent) => {
       for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) {
@@ -162,36 +159,24 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="border-t border-white/[0.08] bg-[#1A1A1A] safe-bottom"
-    >
+    <form onSubmit={handleSubmit} style={{ borderTop: "1px solid rgba(0,229,255,0.06)", background: "rgba(4,6,11,0.8)", backdropFilter: "blur(20px)" }}>
       {modelLabel && (
         <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-1.5">
-          <span className="text-[7px] font-mono tracking-[0.2em] text-white/20 truncate block">
-            {modelLabel}
-          </span>
+          <span className="text-[7px] font-mono tracking-[0.2em] text-white/20 truncate block">{modelLabel}</span>
         </div>
       )}
 
       {files.length > 0 && (
         <div className="max-w-3xl mx-auto px-3 sm:px-6 pt-2 flex flex-wrap gap-2">
           {files.map((f) => (
-            <div
-              key={f.id}
-              className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded px-2.5 py-1.5 text-[11px] font-mono text-white/70"
-            >
-              <svg className="w-3 h-3 shrink-0 text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+            <div key={f.id} className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-[11px] font-mono text-white/60" style={{ background: "rgba(0,229,255,0.05)", border: "1px solid rgba(0,229,255,0.1)" }}>
+              <svg className="w-3 h-3 shrink-0 text-[#00E5FF]/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
                 <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
                 <polyline points="14 2 14 8 20 8"/>
               </svg>
               <span className="truncate max-w-[120px]">{f.name}</span>
-              <span className="text-white/30 ml-0.5">({formatSize(f.size)})</span>
-              <button
-                type="button"
-                onClick={() => removeFile(f.id)}
-                className="text-white/30 hover:text-white/70 ml-0.5 p-0.5"
-              >
+              <span className="text-white/20 ml-0.5">({formatSize(f.size)})</span>
+              <button type="button" onClick={() => removeFile(f.id)} className="text-white/30 hover:text-white/70 ml-0.5 p-0.5">
                 <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                   <path d="M18 6L6 18M6 6l12 12"/>
                 </svg>
@@ -206,21 +191,15 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled}
-          className="shrink-0 rounded-lg border border-white/[0.12] bg-[#222222] text-white/40 hover:text-white/70 hover:border-white/25 transition-all flex items-center justify-center min-h-[48px] min-w-[48px] disabled:opacity-25"
+          className="shrink-0 rounded-lg transition-all flex items-center justify-center min-h-[48px] min-w-[48px] disabled:opacity-25"
+          style={{ border: "1px solid rgba(0,229,255,0.1)", background: "rgba(0,229,255,0.03)", color: "rgba(255,255,255,0.4)" }}
           title="Attach file"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
             <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
           </svg>
         </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          onChange={handleFileSelect}
-          className="hidden"
-          accept=".pdf,.txt,.md,.json,.csv,.yaml,.yml,.xml,.html,.css,.js,.ts,.tsx,.jsx,.py,.java,.cpp,.rs,.go,.rb,.sh,.bat,.log,.toml,.env,.svg,.png,.jpg,.jpeg,.gif"
-        />
+        <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} className="hidden" accept=".pdf,.txt,.md,.json,.csv,.yaml,.yml,.xml,.html,.css,.js,.ts,.tsx,.jsx,.py,.java,.cpp,.rs,.go,.rb,.sh,.bat,.log,.toml,.env,.svg,.png,.jpg,.jpeg,.gif" />
 
         <div className="flex-1 relative">
           <input
@@ -233,7 +212,8 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
             placeholder={files.length > 0 ? "What should I do with this file?" : "Message..."}
             disabled={disabled}
             enterKeyHint="send"
-            className="w-full bg-[#222222] border border-white/[0.12] rounded-lg px-4 py-3 text-[16px] sm:text-sm text-white/85 placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors disabled:opacity-30 font-sans min-h-[48px]"
+            className="w-full rounded-lg px-4 py-3 text-[16px] sm:text-sm text-white/85 placeholder-white/20 focus:outline-none transition-all disabled:opacity-30 font-sans min-h-[48px]"
+            style={{ background: "rgba(0,229,255,0.03)", border: "1px solid rgba(0,229,255,0.1)" }}
           />
         </div>
 
@@ -241,11 +221,14 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
           type="button"
           onClick={toggleMic}
           disabled={disabled}
-          className={`shrink-0 rounded-lg border transition-all flex items-center justify-center min-h-[48px] min-w-[48px] ${
-            listening
-              ? "bg-white/15 border-white/40 text-white"
-              : "bg-[#222222] border-white/[0.12] text-white/40 hover:text-white/70 hover:border-white/25"
-          } disabled:opacity-25`}
+          className={`shrink-0 rounded-lg transition-all flex items-center justify-center min-h-[48px] min-w-[48px] disabled:opacity-25 ${
+            listening ? "text-[#00E5FF]" : ""
+          }`}
+          style={{
+            border: `1px solid ${listening ? "rgba(0,229,255,0.4)" : "rgba(0,229,255,0.1)"}`,
+            background: listening ? "rgba(0,229,255,0.1)" : "rgba(0,229,255,0.03)",
+            color: listening ? "#00E5FF" : "rgba(255,255,255,0.4)",
+          }}
           title={listening ? "Stop recording" : "Voice input"}
         >
           {listening
@@ -257,11 +240,12 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
         <button
           type="submit"
           disabled={!canSubmit}
-          className={`shrink-0 rounded-lg border transition-all flex items-center justify-center min-h-[48px] min-w-[48px] ${
-            canSubmit
-              ? "bg-white text-black border-white"
-              : "bg-[#222222] border-white/[0.12] text-white/20"
-          } disabled:opacity-15 disabled:cursor-not-allowed`}
+          className="shrink-0 rounded-lg transition-all flex items-center justify-center min-h-[48px] min-w-[48px] disabled:opacity-15 disabled:cursor-not-allowed"
+          style={{
+            border: canSubmit ? "1px solid rgba(0,229,255,0.4)" : "1px solid rgba(0,229,255,0.06)",
+            background: canSubmit ? "rgba(0,229,255,0.15)" : "rgba(0,229,255,0.02)",
+            color: canSubmit ? "#00E5FF" : "rgba(255,255,255,0.2)",
+          }}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
