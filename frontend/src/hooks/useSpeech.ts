@@ -2,56 +2,53 @@ import { useState, useRef, useCallback, useEffect } from "react";
 
 const STORAGE_KEY = "jarvis_voice_enabled";
 
-function hasSpeech() {
-  return typeof window !== "undefined" && "speechSynthesis" in window;
-}
-
 export function useSpeech() {
   const [voiceEnabled, setVoiceEnabled] = useState(() => {
     try { return localStorage.getItem(STORAGE_KEY) === "true"; } catch { return true; }
   });
   const [speaking, setSpeaking] = useState(false);
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
-  const warmedRef = useRef(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const queueRef = useRef<string[]>([]);
+  const speakingRef = useRef(false);
+  const warmedRef = useRef(false);
 
+  // Load voices + warmup on first user gesture
   useEffect(() => {
-    if (!hasSpeech()) return;
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
-    const load = () => {
+    const loadVoices = () => {
       const voices = speechSynthesis.getVoices();
       if (voices.length > 0) {
         const uk = voices.find((v) => /uk|british|daniel|oliver|harry/i.test(v.name) && v.lang.startsWith("en"));
-        const us = voices.find((v) => /google\s*us|samantha|aaron|fred/i.test(v.name) && v.lang.startsWith("en"));
+        const us = voices.find((v) => /google\s*us|samantha|aaron|fred|david|zira|jenny|aria/i.test(v.name) && v.lang.startsWith("en"));
         const any_en = voices.find((v) => v.lang.startsWith("en"));
         voiceRef.current = uk || us || any_en || null;
       }
     };
-    load();
-    speechSynthesis.addEventListener("voiceschanged", load);
-    const t = setTimeout(load, 1500);
+    loadVoices();
+    speechSynthesis.addEventListener("voiceschanged", loadVoices);
+    const t = setTimeout(loadVoices, 1500);
 
     const warmup = () => {
       if (warmedRef.current) return;
       warmedRef.current = true;
       try {
-        speechSynthesis.cancel();
-        for (let i = 0; i < 3; i++) {
-          const u = new SpeechSynthesisUtterance(" ");
-          u.volume = 0;
-          speechSynthesis.speak(u);
-        }
-        setTimeout(() => speechSynthesis.cancel(), 200);
+        const u = new SpeechSynthesisUtterance(" ");
+        u.volume = 0;
+        u.rate = 1;
+        u.onend = () => {
+          warmedRef.current = true; // mark fully warmed
+        };
+        speechSynthesis.speak(u);
       } catch { /* */ }
     };
-    document.addEventListener("pointerdown", warmup, { once: true });
-    document.addEventListener("touchstart", warmup, { once: true });
+    document.addEventListener("pointerdown", warmup, { once: true, passive: true });
+    document.addEventListener("touchstart", warmup, { once: true, passive: true });
 
     return () => {
-      speechSynthesis.removeEventListener("voiceschanged", load);
+      speechSynthesis.removeEventListener("voiceschanged", loadVoices);
       clearTimeout(t);
-      document.removeEventListener("pointerdown", warmup);
-      document.removeEventListener("touchstart", warmup);
     };
   }, []);
 
@@ -59,78 +56,68 @@ export function useSpeech() {
     try { localStorage.setItem(STORAGE_KEY, String(voiceEnabled)); } catch { /* */ }
   }, [voiceEnabled]);
 
+  const stop = useCallback(() => {
+    try { speechSynthesis.cancel(); } catch { /* */ }
+    setSpeaking(false);
+    speakingRef.current = false;
+    utteranceRef.current = null;
+  }, []);
+
+  const processQueue = useCallback(() => {
+    if (speakingRef.current || queueRef.current.length === 0) return;
+    const text = queueRef.current.shift()!;
+    speakingRef.current = true;
+    setSpeaking(true);
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      if (voiceRef.current) u.voice = voiceRef.current;
+      u.rate = 0.9;
+      u.pitch = 0.85;
+      u.volume = 1;
+      u.onend = () => {
+        speakingRef.current = false;
+        setSpeaking(false);
+        utteranceRef.current = null;
+        processQueue();
+      };
+      u.onerror = () => {
+        speakingRef.current = false;
+        setSpeaking(false);
+        utteranceRef.current = null;
+        processQueue();
+      };
+      utteranceRef.current = u;
+      speechSynthesis.speak(u);
+    } catch {
+      speakingRef.current = false;
+      setSpeaking(false);
+      utteranceRef.current = null;
+      processQueue();
+    }
+  }, []);
+
   const speak = useCallback((text: string) => {
-    if (!hasSpeech()) {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
       console.warn("[speech] SpeechSynthesis not available");
       return;
     }
     if (!text || !text.trim()) return;
-
-    const trySpeak = (retry = false) => {
-      try {
-        speechSynthesis.cancel();
-
-        const doSpeak = () => {
-          const u = new SpeechSynthesisUtterance(text);
-          if (voiceRef.current) u.voice = voiceRef.current;
-          u.rate = 0.9;
-          u.pitch = 0.85;
-          u.volume = 1;
-          u.onstart = () => setSpeaking(true);
-          u.onend = () => setSpeaking(false);
-          u.onerror = (e) => {
-            console.warn("[speech] error:", e.error);
-            setSpeaking(false);
-          };
-          utteranceRef.current = u;
-          speechSynthesis.speak(u);
-        };
-
-        if (retry) {
-          setTimeout(doSpeak, 150);
-        } else {
-          doSpeak();
-        }
-      } catch (err) {
-        console.warn("[speech] exception:", err);
-        setSpeaking(false);
-      }
-    };
-
-    trySpeak(false);
-
-    // Chrome sometimes swallows first utterance after cancel
-    if (!retryRef.current) {
-      retryRef.current = true;
-      setTimeout(() => {
-        if (!utteranceRef.current || !speaking) {
-          console.warn("[speech] first attempt may have failed, retrying...");
-          trySpeak(true);
-        }
-      }, 1200);
-    }
-  }, []);
-
-  const retryRef = useRef(false);
-
-  const stop = useCallback(() => {
-    try { speechSynthesis.cancel(); } catch { /* */ }
-    setSpeaking(false);
-  }, []);
-
-  useEffect(() => {
-    return () => { try { speechSynthesis.cancel(); } catch { /* */ } };
-  }, []);
+    queueRef.current.push(text);
+    processQueue();
+  }, [processQueue]);
 
   const toggleVoice = useCallback(() => {
     setVoiceEnabled((p) => {
       const next = !p;
-      if (!next) stop();
+      if (!next) {
+        stop();
+        queueRef.current = [];
+      }
       return next;
     });
   }, [stop]);
 
   const voiceLabel = voiceRef.current?.name || "Default";
 
-  return { voiceEnabled, toggleVoice, speaking, speak, stop, supported: hasSpeech(), voiceReady: true, voiceLabel };
+  return { voiceEnabled, toggleVoice, speaking, speak, stop, supported: true, voiceReady: true, voiceLabel };
 }
