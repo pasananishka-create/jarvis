@@ -10,6 +10,16 @@ function findJarvisVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice |
   return voices.find((v) => v.lang.startsWith("en")) || null;
 }
 
+function warmupSpeech() {
+  try {
+    const u = new SpeechSynthesisUtterance("");
+    u.volume = 0;
+    u.rate = 1;
+    speechSynthesis.speak(u);
+    setTimeout(() => speechSynthesis.cancel(), 50);
+  } catch { /* */ }
+}
+
 export function useSpeech() {
   const [voiceEnabled, setVoiceEnabled] = useState(() => {
     try { return localStorage.getItem(STORAGE_KEY) === "true"; } catch { return true; }
@@ -18,19 +28,38 @@ export function useSpeech() {
   const [supported, setSupported] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  const warmedRef = useRef(false);
 
   useEffect(() => {
     const hasSpeech = typeof window !== "undefined" && "speechSynthesis" in window;
     setSupported(hasSpeech);
     if (!hasSpeech) return;
 
+    // Chrome loads voices asynchronously; poll + event both
     const load = () => {
       const voices = speechSynthesis.getVoices();
-      if (voices.length > 0) voiceRef.current = findJarvisVoice(voices);
+      if (voices.length > 0) {
+        voiceRef.current = findJarvisVoice(voices);
+      }
     };
     load();
     speechSynthesis.addEventListener("voiceschanged", load);
-    return () => speechSynthesis.removeEventListener("voiceschanged", load);
+    // Retry after a delay for Chrome
+    const t = setTimeout(load, 500);
+
+    // Warm up speech engine on first user click
+    const handler = () => {
+      if (warmedRef.current) return;
+      warmedRef.current = true;
+      warmupSpeech();
+    };
+    document.addEventListener("pointerdown", handler, { once: true });
+
+    return () => {
+      speechSynthesis.removeEventListener("voiceschanged", load);
+      clearTimeout(t);
+      document.removeEventListener("pointerdown", handler);
+    };
   }, []);
 
   useEffect(() => {
@@ -47,7 +76,7 @@ export function useSpeech() {
     u.volume = 1;
     u.onstart = () => setSpeaking(true);
     u.onend = () => setSpeaking(false);
-    u.onerror = () => setSpeaking(false);
+    u.onerror = (e) => { console.warn("[speech] error:", e.error); setSpeaking(false); };
     utteranceRef.current = u;
     speechSynthesis.speak(u);
   }, [supported]);

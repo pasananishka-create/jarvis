@@ -233,6 +233,10 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [inputFocused, setInputFocused] = useState(false);
   const streamTextRef = useRef("");
+  const speakRef = useRef(speak);
+  const voiceRef = useRef(voiceEnabled);
+  speakRef.current = speak;
+  voiceRef.current = voiceEnabled;
   const reduced = useReducedMotion();
 
   const scrollToBottom = useCallback(() => {
@@ -267,7 +271,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
       streamTextRef.current = "";
       setThinking(false);
       setErrorMsg(null);
-      if (voiceEnabled && content) speak(content);
+      if (voiceRef.current && content) speakRef.current(content);
     });
 
     onError((err) => {
@@ -276,7 +280,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
       setThinking(false);
       setTimeout(() => setChatState("idle"), 3000);
     });
-  }, [onToken, onDone, onError, voiceEnabled, speak]);
+  }, [onToken, onDone, onError]);
 
   const handleSend = useCallback(
     (text: string) => {
