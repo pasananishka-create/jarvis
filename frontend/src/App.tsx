@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useVisualViewport } from "./hooks/useVisualViewport";
 import MountSequence from "./components/MountSequence";
@@ -7,9 +7,18 @@ import HomeScreen from "./components/HomeScreen";
 import Chat from "./components/Chat";
 import VoiceMode from "./components/VoiceMode";
 import SettingsDialog from "./components/SettingsDialog";
+import PermissionScreen from "./components/PermissionScreen";
 import { useJarvis } from "./hooks/useJarvis";
+import { useSound } from "./hooks/useSound";
 
 type View = "home" | "chat" | "voice";
+
+function loadPref<T>(key: string, fallback: T): T {
+  try {
+    const v = localStorage.getItem(key);
+    return v !== null ? JSON.parse(v) : fallback;
+  } catch { return fallback; }
+}
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -17,9 +26,33 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { keyboardHeight } = useVisualViewport();
   const { status, backend } = useJarvis();
+  const sound = useSound();
 
   const [voiceListening, setVoiceListening] = useState(false);
   const [voiceTranscript, setVoiceTranscript] = useState("");
+
+  const [micPermission, setMicPermission] = useState<"granted" | "denied" | "prompt">("prompt");
+  const [showPermission, setShowPermission] = useState(false);
+
+  // Load preferences
+  const animQuality = loadPref<string>("jarvis_anim_quality", "high");
+  const particleCount = loadPref<number>("jarvis_particle_count", 60);
+
+  // Check mic permission on mount
+  useEffect(() => {
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: "microphone" as PermissionName }).then((s) => {
+        setMicPermission(s.state as "granted" | "denied" | "prompt");
+        s.addEventListener("change", () => setMicPermission(s.state as "granted" | "denied" | "prompt"));
+      }).catch(() => {});
+    }
+  }, []);
+
+  // Play startup sound when splash finishes
+  const onSplashComplete = useCallback(() => {
+    setShowSplash(false);
+    sound.play("startup");
+  }, [sound]);
 
   const backendInfo = {
     active: backend,
@@ -28,10 +61,10 @@ export default function App() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden" style={{ backgroundColor: "#04060B" }}>
-      <Background />
+      <Background quality={animQuality as "low" | "medium" | "high"} particleCount={particleCount} />
 
       {showSplash && (
-        <MountSequence onComplete={() => setShowSplash(false)} />
+        <MountSequence onComplete={onSplashComplete} />
       )}
 
       {!showSplash && (
@@ -50,7 +83,7 @@ export default function App() {
                   status={status}
                   backendInfo={backendInfo}
                   onOpenChat={() => setView("chat")}
-                  onOpenVoice={() => setView("voice")}
+                  onOpenVoice={() => { sound.play("listening"); setView("voice"); }}
                   onOpenSettings={() => setSettingsOpen(true)}
                 />
               </motion.div>
@@ -76,7 +109,7 @@ export default function App() {
           {/* Voice Mode overlay */}
           <VoiceMode
             isOpen={view === "voice"}
-            onClose={() => setView("home")}
+            onClose={() => { sound.play("shutdown"); setView("home"); }}
             listening={voiceListening}
             transcript={voiceTranscript}
           />
@@ -115,6 +148,17 @@ export default function App() {
       )}
 
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      {/* Permission screen */}
+      <AnimatePresence>
+        {showPermission && micPermission === "denied" && (
+          <PermissionScreen
+            type="microphone"
+            onRetry={() => setShowPermission(false)}
+            onDismiss={() => setShowPermission(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -17,6 +17,24 @@ function useReducedMotion() {
   return reduced;
 }
 
+function playStartupSound() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(440, ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(880, ctx.currentTime + 0.2);
+    osc.frequency.linearRampToValueAtTime(660, ctx.currentTime + 0.35);
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.5);
+  } catch {}
+}
+
 export default function MountSequence({ onComplete }: MountSequenceProps) {
   const [phase, setPhase] = useState<"ring" | "text" | "ready" | "done">("ring");
   const reduced = useReducedMotion();
@@ -35,68 +53,23 @@ export default function MountSequence({ onComplete }: MountSequenceProps) {
       return;
     }
 
+    playStartupSound();
+
     const circ = 2 * Math.PI * 46;
     const tl = gsap.timeline({
       onComplete: () => { setPhase("done"); onComplete(); },
     });
 
-    // Phase: ring draws in
     tl.set(containerRef.current, { opacity: 1, display: "flex" });
-
-    // Draw the main circle
-    tl.to(circle1Ref.current, {
-      strokeDashoffset: 0,
-      duration: 0.8,
-      ease: "power2.inOut",
-    }, 0);
-
-    // Draw the secondary circle (opposite direction)
-    tl.to(circle2Ref.current, {
-      strokeDashoffset: circ * 0.3,
-      duration: 1.2,
-      ease: "power1.out",
-    }, 0.3);
-
-    // Center dot appears with a bounce
-    tl.to(dotRef.current, {
-      scale: 1,
-      opacity: 0.8,
-      duration: 0.6,
-      ease: "back.out(2)",
-    }, 0.4);
-
-    // Phase transition: ring
+    tl.to(circle1Ref.current, { strokeDashoffset: 0, duration: 0.8, ease: "power2.inOut" }, 0);
+    tl.to(circle2Ref.current, { strokeDashoffset: circ * 0.3, duration: 1.2, ease: "power1.out" }, 0.3);
+    tl.to(dotRef.current, { scale: 1, opacity: 0.8, duration: 0.6, ease: "back.out(2)" }, 0.4);
     tl.call(() => setPhase("text"), undefined, 0.8);
-
-    // Title reveals
-    tl.to(titleRef.current, {
-      width: "auto",
-      duration: 0.6,
-      ease: "power2.inOut",
-    }, 1.2);
-
-    // Subtitle fades in
-    tl.fromTo(subtitleRef.current,
-      { opacity: 0, y: 10 },
-      { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" },
-      1.6,
-    );
-
-    // Phase transition: text
+    tl.to(titleRef.current, { width: "auto", duration: 0.6, ease: "power2.inOut" }, 1.2);
+    tl.fromTo(subtitleRef.current, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 1.6);
     tl.call(() => setPhase("ready"), undefined, 1.8);
-
-    // Line expands
-    tl.to(lineRef.current, {
-      width: "40%",
-      duration: 0.8,
-      ease: "power2.inOut",
-    }, 1.8);
-
-    // Hold brief then fade out
-    tl.to(containerRef.current, {
-      opacity: 0,
-      duration: 0.4,
-    }, 2.8);
+    tl.to(lineRef.current, { width: "40%", duration: 0.8, ease: "power2.inOut" }, 1.8);
+    tl.to(containerRef.current, { opacity: 0, duration: 0.4 }, 2.8);
 
     return () => { tl.kill(); };
   }, [onComplete, reduced]);
