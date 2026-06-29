@@ -13,15 +13,9 @@ type ChatState = "idle" | "listening" | "processing" | "responding" | "error";
 const QUICK_ACTIONS = [
   "What can you do?",
   "Tell me a joke",
-  "Search the web",
   "What's the time?",
   "Run a command",
-  "Summarize this",
 ];
-
-const SUGGESTIONS: Record<string, string[]> = {
-  default: ["Tell me more", "Explain differently", "Give an example"],
-};
 
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -39,39 +33,15 @@ function Toast({ message, type, onDismiss }: { message: string; type: "success" 
   useEffect(() => { const t = setTimeout(onDismiss, 3000); return () => clearTimeout(t); }, [onDismiss]);
   return (
     <motion.div
-      className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg border text-[10px] font-mono tracking-wider shadow-lg gpu-layer"
-      style={{
-        backgroundColor: type === "success" ? "rgba(0, 212, 255, 0.06)" : "rgba(232, 79, 79, 0.06)",
-        borderColor: type === "success" ? "rgba(0, 212, 255, 0.15)" : "rgba(232, 79, 79, 0.15)",
-        color: type === "success" ? "rgba(0, 212, 255, 0.6)" : "rgba(232, 79, 79, 0.6)",
-      }}
+      className="fixed top-14 left-1/2 -translate-x-1/2 z-50 px-4 py-2 border border-white/[0.1] bg-black text-[9px] font-mono tracking-[0.15em]"
+      style={{ color: type === "error" ? "rgba(255,68,68,0.7)" : "rgba(255,255,255,0.6)" }}
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12 }}
+      transition={{ duration: 0.2 }}
     >
       {message}
     </motion.div>
-  );
-}
-
-function MessageTime({ ts }: { ts: number }) {
-  const d = new Date(ts);
-  const h = d.getHours().toString().padStart(2, "0");
-  const m = d.getMinutes().toString().padStart(2, "0");
-  return <span className="text-white/12 text-[9px] font-mono tabular-nums">{h}:{m}</span>;
-}
-
-function JarvisIcon({ speaking }: { speaking?: boolean }) {
-  return (
-    <motion.svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none"
-      animate={speaking ? { scale: [1, 1.08, 1] } : {}}
-      transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
-    >
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={1.5} className="text-[#00D4FF]/30" style={speaking ? { filter: "drop-shadow(0 0 4px rgba(0,212,255,0.4))" } : {}} />
-      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth={1.5} className="text-[#00D4FF]/40" />
-      <path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="currentColor" strokeWidth={1.2} className="text-[#00D4FF]/25" />
-      <circle cx="12" cy="12" r="1.5" fill="currentColor" className="text-[#00D4FF]/50" />
-    </motion.svg>
   );
 }
 
@@ -81,9 +51,9 @@ function BouncingDots() {
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          className="w-[5px] h-[5px] rounded-full bg-[#00D4FF]/40 inline-block"
-          animate={{ y: [0, -4, 0] }}
-          transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.15, ease: "easeInOut" }}
+          className="w-[3px] h-[3px] rounded-full bg-white/30 inline-block"
+          animate={{ opacity: [0.2, 1, 0.2] }}
+          transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.2 }}
         />
       ))}
     </span>
@@ -96,60 +66,47 @@ function WordByWordText({ text, speed = 20, reduced }: { text: string; speed?: n
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   useEffect(() => {
-    setVisible(0);
     if (reduced) { setVisible(words.length); return; }
     timerRef.current = setInterval(() => {
-      setVisible((v) => {
-        if (v >= words.length) { clearInterval(timerRef.current); return words.length; }
-        return v + 1;
+      setVisible((p) => {
+        if (p >= words.length) { clearInterval(timerRef.current); return p; }
+        return p + 1;
       });
     }, speed);
     return () => clearInterval(timerRef.current);
-  }, [text, speed, reduced]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [text, speed, reduced, words.length]);
 
-  return (
-    <span className="whitespace-pre-wrap break-words">
-      {words.slice(0, visible).join(" ")}
-      {visible < words.length && (
-        <motion.span
-          className="inline-block w-[2px] h-[14px] sm:h-4 bg-[#00D4FF]/50 ml-0.5 align-text-bottom gpu-layer"
-          animate={reduced ? {} : { opacity: [1, 0] }}
-          transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse" }}
-        />
-      )}
-    </span>
-  );
+  return <>{words.slice(0, visible).join(" ")}{visible < words.length && <span className="opacity-30">▎</span>}</>;
 }
 
 function MessageContent({ content }: { content: string }) {
-  const parts: { type: "code" | "text"; value: string }[] = [];
-  const regex = /```(\w*)\n?([\s\S]*?)```/g;
-  let last = 0;
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(content)) !== null) {
-    if (match.index > last) parts.push({ type: "text", value: content.slice(last, match.index) });
-    parts.push({ type: "code", value: match[2] });
-    last = match.index + match[0].length;
-  }
-  if (last < content.length) parts.push({ type: "text", value: content.slice(last) });
-
-  if (parts.length === 0) parts.push({ type: "text", value: content });
-
+  const parts = content.split(/(```[\s\S]*?```)/g);
   return (
     <>
-      {parts.map((part, i) =>
-        part.type === "code" ? (
-          <pre
-            key={i}
-            className="bg-[#080C10] border border-white/[0.04] rounded-lg p-3 my-2 overflow-x-auto text-[12px] leading-[1.5] font-mono text-[#E8F4F8]/75 whitespace-pre-wrap"
-          >
-            {part.value}
-          </pre>
-        ) : (
-          <span key={i}>{part.value}</span>
-        )
-      )}
+      {parts.map((part, i) => {
+        if (part.startsWith("```") && part.endsWith("```")) {
+          const code = part.slice(3, -3);
+          const lang = code.split("\n")[0].trim();
+          const body = code.includes("\n") ? code.slice(code.indexOf("\n") + 1) : code;
+          return (
+            <pre key={i} className="text-[11px] font-mono leading-relaxed text-white/60 my-2 overflow-x-auto border-l border-white/10 pl-3">
+              <code>{body || lang}</code>
+            </pre>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
     </>
+  );
+}
+
+function MessageTime({ ts }: { ts?: number }) {
+  if (!ts) return null;
+  const d = new Date(ts);
+  const h = d.getHours().toString().padStart(2, "0");
+  const m = d.getMinutes().toString().padStart(2, "0");
+  return (
+    <span className="text-[7px] font-mono tracking-[0.1em] text-white/15 whitespace-nowrap">{h}:{m}</span>
   );
 }
 
@@ -180,7 +137,7 @@ function MessagesList({
       }, reduced ? 100 : wordCount * 20 + 200);
       return () => clearTimeout(timer);
     }
-  }, [lastMsg?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [lastMsg?.id]);
 
   useEffect(() => {
     if (listRef.current) {
@@ -188,7 +145,6 @@ function MessagesList({
     }
   }, [messages]);
 
-  // GSAP stagger for new messages
   useEffect(() => {
     if (reduced) return;
     const els: HTMLDivElement[] = [];
@@ -201,10 +157,9 @@ function MessagesList({
     if (els.length === 0) return;
     gsap.from(els, {
       opacity: 0,
-      y: 16,
-      scale: 0.98,
-      duration: 0.35,
-      stagger: 0.04,
+      y: 12,
+      duration: 0.3,
+      stagger: 0.03,
       ease: "power2.out",
     });
   }, [messages, reduced]);
@@ -220,47 +175,39 @@ function MessagesList({
         <div
           key={msg.id}
           ref={(el) => setMsgRef(msg.id, el)}
-          className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-3 sm:mb-4`}
+          className="mb-4 sm:mb-5"
         >
-          <div
-            className={`flex gap-2.5 max-w-[90%] sm:max-w-[80%] md:max-w-[75%] ${
-              msg.role === "user" ? "flex-row-reverse" : "flex-row"
-            }`}
-          >
-            <div className="flex flex-col items-center gap-1 pt-1 shrink-0">
-              {msg.role === "assistant" ? (
-                <div className="w-[22px] h-[22px] rounded-full bg-[#00D4FF]/8 border border-[#00D4FF]/15 flex items-center justify-center">
-                  <JarvisIcon speaking={speaking} />
-                </div>
-              ) : (
-                <div className="w-[22px] h-[22px] rounded-full bg-[#00D4FF]/10 flex items-center justify-center">
-                  <svg className="w-3 h-3 text-[#00D4FF]/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          <div className="max-w-3xl mx-auto px-4 sm:px-6">
+            <div className="flex items-start gap-3">
+              <div className={`w-[18px] h-[18px] shrink-0 mt-0.5 flex items-center justify-center border ${
+                msg.role === "assistant" ? "border-white/20" : "border-white/10"
+              }`}>
+                {msg.role === "assistant" ? (
+                  <motion.svg className="w-[10px] h-[10px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
+                    animate={speaking ? { opacity: [1, 0.4, 1] } : {}}
+                    transition={{ duration: 1.2, repeat: Infinity }}
+                  >
+                    <circle cx="12" cy="12" r="10"/>
+                    <circle cx="12" cy="12" r="4"/>
+                    <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+                  </motion.svg>
+                ) : (
+                  <svg className="w-[10px] h-[10px] text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                    <circle cx="12" cy="12" r="5"/>
+                    <path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>
                   </svg>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-[8px] font-mono tracking-[0.2em] ${
+                    msg.role === "assistant" ? "text-white/50" : "text-white/30"
+                  }`}>
+                    {msg.role === "assistant" ? "J.A.R.V.I.S." : "YOU"}
+                  </span>
+                  <MessageTime ts={msg.timestamp} />
                 </div>
-              )}
-            </div>
-            <div className="min-w-0">
-              <div
-                className={`${
-                  msg.role === "user"
-                    ? "bg-[#00D4FF]/8 border-l-2 border-[#00D4FF]/25 text-[#E8F4F8] rounded-r-lg"
-                    : "text-[#E8F4F8]/90"
-                } px-3.5 sm:px-4 py-2.5 sm:py-3`}
-              >
-                {msg.role === "assistant" && (
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[9px] font-mono tracking-[0.1em] text-[#00D4FF]/40">J.A.R.V.I.S.</span>
-                    <MessageTime ts={msg.timestamp} />
-                  </div>
-                )}
-                {msg.role === "user" && (
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[9px] font-mono tracking-[0.1em] text-white/20">YOU</span>
-                    <MessageTime ts={msg.timestamp} />
-                  </div>
-                )}
-                <p className="text-[14px] sm:text-sm leading-[1.7] sm:leading-relaxed font-sans">
+                <p className="text-[14px] sm:text-sm leading-[1.7] sm:leading-relaxed font-sans text-white/85">
                   {msg.role === "assistant" && respondingId === msg.id && !reduced ? (
                     <WordByWordText text={msg.content} reduced={reduced} />
                   ) : (
@@ -276,26 +223,9 @@ function MessagesList({
   );
 }
 
-function SuggestionChips({ onSelect }: { onSelect: (text: string) => void }) {
-  const chips = SUGGESTIONS.default;
-  return (
-    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-3 sm:-mx-6 px-3 sm:px-6">
-      {chips.map((chip) => (
-        <button
-          key={chip}
-          onClick={() => onSelect(chip)}
-          className="shrink-0 text-[10px] font-mono tracking-[0.05em] text-white/30 hover:text-[#00D4FF]/60 border border-white/[0.06] hover:border-[#00D4FF]/20 rounded-full px-3.5 py-2 transition-all whitespace-nowrap min-h-[36px]"
-        >
-          {chip}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }) {
   const { status, backend, models, toast, sendMessage, sendCommand, onToken, onDone, onError, dismissToast } = useJarvis();
-  const { voiceEnabled, toggleVoice, speaking, speak, stop: stopSpeech, supported } = useSpeech();
+  const { voiceEnabled, toggleVoice, speaking, speak } = useSpeech();
   const [messages, setMessages] = useState<Message[]>([]);
   const [streamingText, setStreamingText] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -346,7 +276,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
       setThinking(false);
       setTimeout(() => setChatState("idle"), 3000);
     });
-  }, [onToken, onDone, onError]);
+  }, [onToken, onDone, onError, voiceEnabled, speak]);
 
   const handleSend = useCallback(
     (text: string) => {
@@ -393,7 +323,9 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
     available: Object.keys(models),
     models,
   };
-  const currentModel = backend.includes("(") ? backend.split("(")[1]?.replace(")", "") : backend;
+  const currentModel = backend.includes("(")
+    ? backend.split("(")[1]?.replace(")", "").trim() || ""
+    : backend;
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-black" style={{ paddingBottom: keyboardHeight }}>
@@ -414,15 +346,14 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
         <AnimatePresence>
           {showCentral && (
             <motion.div
-              className="flex items-center justify-center overflow-hidden gpu-layer"
+              className="flex items-center justify-center overflow-hidden"
               style={{ pointerEvents: "none" }}
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0 }}
               animate={{
                 opacity: 1,
-                scale: 1,
-                minHeight: keyboardOpen ? "20vh" : "30vh",
+                minHeight: keyboardOpen ? "20vh" : "35vh",
               }}
-              exit={{ opacity: 0, scale: 0.9 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             >
               <CentralRing state={chatState} />
@@ -430,7 +361,6 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
           )}
         </AnimatePresence>
 
-        {/* Welcome state — shown when no messages */}
         <AnimatePresence>
           {!hasMessages && !thinking && (
             <motion.div
@@ -441,12 +371,12 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
               transition={{ duration: 0.5, delay: 0.3 }}
             >
               <motion.p
-                className="text-[11px] font-mono tracking-[0.08em] text-[#00D4FF]/25 mb-5 text-center leading-relaxed max-w-xs"
+                className="text-[10px] font-mono tracking-[0.2em] text-white/20 mb-5 text-center leading-relaxed max-w-xs"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.5 }}
               >
-                Mission-capable AI intelligence system. How may I assist you today?
+                How may I assist you today?
               </motion.p>
 
               <div className="flex flex-wrap justify-center gap-2 max-w-sm">
@@ -454,7 +384,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
                   <motion.button
                     key={action}
                     onClick={() => handleSend(action)}
-                    className="text-[10px] font-mono tracking-[0.05em] text-white/25 hover:text-[#00D4FF]/50 border border-white/[0.05] hover:border-[#00D4FF]/15 rounded-full px-3.5 py-2 transition-all min-h-[36px]"
+                    className="text-[9px] font-mono tracking-[0.1em] text-white/25 hover:text-white/50 border border-white/[0.06] hover:border-white/20 px-3.5 py-2 transition-all min-h-[36px]"
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.7 + i * 0.06 }}
@@ -469,10 +399,9 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
           )}
         </AnimatePresence>
 
-        {/* Conversation thread */}
         <div
           data-thread
-          className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-8 scroll-smooth overscroll-contain gpu-layer"
+          className="flex-1 overflow-y-auto px-3 sm:px-6 md:px-8 scroll-smooth overscroll-contain"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           <div className="max-w-3xl mx-auto">
@@ -485,35 +414,39 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
                   onRespondingDone={() => {}}
                 />
 
-                {/* Inline streaming indicator */}
                 <AnimatePresence>
                   {thinking && (
                     <motion.div
-                      className="flex justify-start py-1"
+                      className="mb-4 sm:mb-5"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                     >
-                      <div className="flex gap-2.5 max-w-[90%] sm:max-w-[80%] md:max-w-[75%]">
-                        <div className="flex flex-col items-center gap-1 pt-1 shrink-0">
-                          <div className="w-[22px] h-[22px] rounded-full bg-[#00D4FF]/8 border border-[#00D4FF]/15 flex items-center justify-center">
-                            <JarvisIcon speaking={speaking} />
+                      <div className="max-w-3xl mx-auto px-4 sm:px-6">
+                        <div className="flex items-start gap-3">
+                          <div className="w-[18px] h-[18px] shrink-0 mt-0.5 flex items-center justify-center border border-white/20">
+                            <motion.svg className="w-[10px] h-[10px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
+                              animate={speaking ? { opacity: [1, 0.4, 1] } : {}}
+                              transition={{ duration: 1.2, repeat: Infinity }}
+                            >
+                              <circle cx="12" cy="12" r="10"/>
+                              <circle cx="12" cy="12" r="4"/>
+                              <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+                            </motion.svg>
                           </div>
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-[#E8F4F8]/90 px-3.5 sm:px-4 py-2.5 sm:py-3">
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-[9px] font-mono tracking-[0.1em] text-[#00D4FF]/40">J.A.R.V.I.S.</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[8px] font-mono tracking-[0.2em] text-white/50">J.A.R.V.I.S.</span>
                             </div>
-                            <p className="text-[14px] sm:text-sm leading-relaxed font-sans">
+                            <p className="text-[14px] sm:text-sm leading-relaxed font-sans text-white/85">
                               {streamingText ? (
                                 <>{streamingText}<motion.span
-                                  className="inline-block w-[2px] h-[14px] bg-[#00D4FF]/50 ml-0.5 align-text-bottom gpu-layer"
+                                  className="inline-block w-[1.5px] h-[13px] bg-white/40 ml-0.5 align-text-bottom"
                                   animate={{ opacity: [1, 0] }}
                                   transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse" }}
                                 /></>
                               ) : (
-                                <span className="inline-flex items-center text-[11px] font-mono tracking-[0.05em] text-[#00D4FF]/30">
+                                <span className="inline-flex items-center text-[10px] font-mono tracking-[0.1em] text-white/25">
                                   Processing<BouncingDots />
                                 </span>
                               )}
@@ -525,32 +458,16 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
                   )}
                 </AnimatePresence>
 
-                {/* Suggestion chips after response */}
-                {!thinking && hasMessages && messages[messages.length - 1]?.role === "assistant" && (
-                  <motion.div
-                    className="mt-3 mb-1"
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.2 }}
-                  >
-                    <SuggestionChips onSelect={handleSend} />
-                  </motion.div>
-                )}
-
-                {/* Error state */}
                 <AnimatePresence>
                   {chatState === "error" && errorMsg && (
                     <motion.div
-                      className="flex justify-center py-3"
+                      className="flex justify-center py-2"
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }}
                     >
-                      <div className="flex items-center gap-2 px-3 py-2 border border-red-400/15 rounded-lg max-w-[90%]">
-                        <div className="w-1 h-1 rounded-full bg-red-400/40 shrink-0" />
-                        <span className="text-[10px] font-mono text-red-400/40 leading-relaxed">
-                          {errorMsg}
-                        </span>
+                      <div className="flex items-center gap-2 px-3 py-2 border border-white/10">
+                        <span className="text-[8px] font-mono text-white/40">{errorMsg}</span>
                       </div>
                     </motion.div>
                   )}

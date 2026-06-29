@@ -118,16 +118,16 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
   return (
     <form
       onSubmit={handleSubmit}
-      className="border-t border-white/[0.04] bg-black/90 safe-bottom gpu-layer"
+      className="border-t border-white/[0.06] bg-black safe-bottom"
     >
       {modelLabel && (
-        <div className="max-w-3xl mx-auto px-3 sm:px-6 pt-1.5">
-          <span className="text-[7px] font-mono tracking-[0.15em] text-white/10 truncate block">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-1.5">
+          <span className="text-[7px] font-mono tracking-[0.2em] text-white/10 truncate block">
             {modelLabel}
           </span>
         </div>
       )}
-      <div className="max-w-3xl mx-auto px-2 sm:px-6 py-2 flex gap-2 items-center" style={{ minHeight: 56 }}>
+      <div className="max-w-3xl mx-auto px-3 sm:px-6 py-2 flex gap-2 items-center">
         <div className="flex-1 relative">
           <input
             ref={inputRef}
@@ -136,10 +136,10 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
             onChange={(e) => setText(e.target.value)}
             onFocus={() => onFocusChange?.(true)}
             onBlur={() => onFocusChange?.(false)}
-            placeholder="Message Jarvis..."
+            placeholder="Message..."
             disabled={disabled}
             enterKeyHint="send"
-            className="w-full bg-[#080C10] border border-white/[0.06] rounded-lg px-3.5 py-3 sm:py-3 text-[16px] sm:text-sm text-[#E8F4F8]/85 placeholder-white/10 focus:outline-none focus:border-[#00D4FF]/25 transition-colors disabled:opacity-30 font-sans min-h-[48px]"
+            className="w-full bg-black border border-white/[0.08] rounded-lg px-4 py-3 text-[16px] sm:text-sm text-white/85 placeholder-white/10 focus:outline-none focus:border-white/20 transition-colors disabled:opacity-30 font-sans min-h-[48px]"
           />
         </div>
 
@@ -149,8 +149,8 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
           disabled={disabled}
           className={`shrink-0 rounded-lg border transition-all flex items-center justify-center min-h-[48px] min-w-[48px] ${
             listening
-              ? "bg-red-500/10 border-red-400/30 text-red-400"
-              : "bg-[#080C10] border-white/[0.06] text-white/30 hover:text-white/50 hover:border-[#00D4FF]/15"
+              ? "bg-white/10 border-white/30 text-white"
+              : "bg-black border-white/[0.08] text-white/30 hover:text-white/50 hover:border-white/20"
           } disabled:opacity-25`}
           title={listening ? "Stop recording" : "Voice input"}
         >
@@ -165,8 +165,8 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
           disabled={!canSubmit}
           className={`shrink-0 rounded-lg border transition-all flex items-center justify-center min-h-[48px] min-w-[48px] ${
             canSubmit
-              ? "bg-[#00D4FF]/8 border-[#00D4FF]/25 text-[#00D4FF]"
-              : "bg-[#080C10] border-white/[0.06] text-white/12"
+              ? "bg-white text-black border-white"
+              : "bg-black border-white/[0.08] text-white/12"
           } disabled:opacity-15 disabled:cursor-not-allowed`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

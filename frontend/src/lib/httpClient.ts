@@ -119,6 +119,7 @@ export async function* httpPostStream(
     return;
   }
 
+  console.log("[httpPostStream] fetch", url, JSON.stringify(body).slice(0, 120));
   let resp: Response;
   try {
     resp = await fetch(url, {
@@ -137,8 +138,10 @@ export async function* httpPostStream(
     throw err;
   }
 
+  console.log("[httpPostStream] response status", resp.status, resp.ok ? "OK" : "FAIL");
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
+    console.error("[httpPostStream] error body:", text.slice(0, 300));
     throw new Error(httpError(resp.status, text, String(modelLabel)));
   }
 

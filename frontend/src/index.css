@@ -1,18 +1,26 @@
 @import "tailwindcss";
 
+/* Nothing OS-inspired monochrome theme */
+/* Dot-matrix glyph aesthetic — black, white, grey. No gradients. No shadows. */
+
 @theme {
-  --color-jarvis: #00D4FF;
-  --color-jarvis-dark: #0099CC;
-  --color-jarvis-deep: #005577;
-  --color-jarvis-accent: #00FF9C;
-  --color-bg-deep: #000000;
-  --color-bg-dark: #080C10;
-  --color-bg-surface: rgba(8, 12, 16, 0.8);
-  --color-text-primary: #E8F4F8;
-  --color-text-secondary: rgba(232, 244, 248, 0.6);
-  --color-text-muted: rgba(232, 244, 248, 0.3);
+  --color-nothing-black: #000000;
+  --color-nothing-white: #FFFFFF;
+  --color-nothing-light: #F5F5F5;
+  --color-nothing-gray-100: #E8E8E8;
+  --color-nothing-gray-200: #CCCCCC;
+  --color-nothing-gray-300: #999999;
+  --color-nothing-gray-400: #666666;
+  --color-nothing-gray-500: #444444;
+  --color-nothing-gray-600: #333333;
+  --color-nothing-gray-700: #222222;
+  --color-nothing-gray-800: #1A1A1A;
+  --color-nothing-gray-900: #111111;
+  --color-nothing-accent: #FFFFFF;
+  --color-nothing-red: #FF4444;
   --font-sans: "Inter", "SF Pro Display", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
+  --font-dot: "JetBrains Mono", monospace;
 }
 
 * {
@@ -26,28 +34,26 @@ html, body, #root {
   height: 100%;
   overflow: hidden;
   background: #000000;
-  color: #E8F4F8;
+  color: #FFFFFF;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* OLED true black + scroll */
+/* Nothing OS dot-matrix scrollbar */
 ::-webkit-scrollbar {
-  width: 2px;
+  width: 1px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 212, 255, 0.1);
-  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.08);
 }
 
-/* Selection */
 ::selection {
-  background: rgba(0, 212, 255, 0.2);
-  color: #E8F4F8;
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
 }
 
 /* Safe area */
@@ -64,7 +70,6 @@ html, body, #root {
   .safe-right { padding-right: env(safe-area-inset-right, 0px); }
 }
 
-/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -73,7 +78,7 @@ html, body, #root {
   }
 }
 
-/* Mobile optimizations */
+/* Nothing OS mobile optimizations */
 @media (max-width: 639px) {
   html, body, #root {
     overscroll-behavior: none;
@@ -90,16 +95,13 @@ html, body, #root {
   }
 }
 
-/* Glow utility (GPU-composited: transform/opacity only) */
-.glow-jarvis {
-  box-shadow: 0 0 12px rgba(0, 212, 255, 0.15);
-}
-.glow-accent {
-  box-shadow: 0 0 12px rgba(0, 255, 156, 0.15);
-}
-
-/* GPU compositing hint */
 .gpu-layer {
   transform: translateZ(0);
   will-change: transform, opacity;
+}
+
+/* Nothing glyph text effect — subtle dot-matrix feel */
+.glyph {
+  letter-spacing: 0.15em;
+  font-weight: 300;
 }

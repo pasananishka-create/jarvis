@@ -209,6 +209,7 @@ export async function* directChat(
   const config = getConfig();
   const provider = config.activeProvider;
   const model = config.activeModel || DEFAULTS[provider] || "";
+  console.log("[directChat] provider=", provider, "model=", model, "hasKey=", !!config[provider === "openai" ? "openaiKey" : provider === "anthropic" ? "anthropicKey" : provider === "nvidia" ? "nvidiaKey" : "ollamaUrl"]);
 
   const hasSystem = messages.some((m) => m.role === "system");
   const msgs = hasSystem ? messages : [{ role: "system", content: JARVIS_SYSTEM }, ...messages];

@@ -13,35 +13,23 @@ interface HeaderProps {
 }
 
 function StatusDot({ status }: { status: ConnectionStatus }) {
-  const color = status === "connected" ? "rgba(0, 212, 255, 0.5)"
-    : status === "direct" ? "rgba(0, 255, 156, 0.5)"
-    : "rgba(232, 79, 79, 0.4)";
-  const pulse = status === "connected" || status === "direct";
+  const color = status === "connected" ? "rgba(255,255,255,0.6)"
+    : status === "direct" ? "rgba(255,255,255,0.6)"
+    : "rgba(255,255,255,0.15)";
   return (
-    <motion.div
+    <div
       className="rounded-full shrink-0"
-      style={{ width: 6, height: 6, backgroundColor: color }}
-      animate={pulse ? { opacity: [0.5, 1, 0.5] } : {}}
-      transition={{ duration: 3, repeat: Infinity }}
+      style={{ width: 4, height: 4, backgroundColor: color }}
     />
   );
 }
 
-function VoiceWave() {
-  return (
-    <span className="inline-flex items-center gap-[1.5px] ml-1">
-      {[1, 2, 3].map((i) => (
-        <motion.span
-          key={i}
-          className="w-[2px] rounded-full bg-current"
-          style={{ height: 6 + i * 2 }}
-          animate={{ height: [6 + i * 2, 2, 6 + i * 2] }}
-          transition={{ duration: 0.5 + i * 0.1, repeat: Infinity, ease: "easeInOut" }}
-        />
-      ))}
-    </span>
-  );
-}
+const statusLabels: Record<ConnectionStatus, string> = {
+  connected: "J.A.R.V.I.S.",
+  connecting: "SYNC",
+  direct: "J.A.R.V.I.S.",
+  disconnected: "OFF",
+};
 
 export default function Header({ status, backendInfo, onClear, voiceEnabled, voiceSpeaking, onToggleVoice }: HeaderProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -51,70 +39,61 @@ export default function Header({ status, backendInfo, onClear, voiceEnabled, voi
     ? backendInfo.active.split("(")[1]?.replace(")", "").trim() || ""
     : "";
 
-  const statusLabel = status === "connected" ? "J.A.R.V.I.S."
-    : status === "connecting" ? "SYNC"
-    : status === "direct" ? "DIRECT"
-    : "OFF";
-
-  const statusColor = status === "connected" ? "text-[#00D4FF]/50"
-    : status === "direct" ? "text-[#00FF9C]/40"
-    : "text-red-400/30";
+  const opacity = status === "disconnected" ? "opacity-30" : "opacity-100";
 
   return (
-    <header className="border-b border-white/[0.04] bg-black/80 safe-top">
-      <div className="max-w-3xl mx-auto px-3 sm:px-6 flex items-center justify-between h-11">
-        {/* Left */}
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <StatusDot status={status} />
-            <span className={`text-[9px] font-mono tracking-[0.2em] ${statusColor}`}>{statusLabel}</span>
-          </div>
-          <span className="text-white/[0.04]">|</span>
-          <span className="text-[8px] font-mono text-white/12 truncate max-w-[80px] sm:max-w-[160px]">
-            {currentModel || currentBackend || "no backend"}
+    <header className={`border-b border-white/[0.06] bg-black safe-top ${opacity}`}>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 flex items-center justify-between h-12">
+        <div className="flex items-center gap-3 min-w-0">
+          <StatusDot status={status} />
+          <span className="text-[10px] font-mono tracking-[0.25em] text-white/70">{statusLabels[status]}</span>
+          <span className="text-white/[0.06]">/</span>
+          <span className="text-[8px] font-mono text-white/25 truncate max-w-[80px] sm:max-w-[160px]">
+            {currentModel || currentBackend}
           </span>
         </div>
 
-        {/* Right */}
-        <div className="flex items-center gap-1">
-          <span className="text-[8px] font-mono text-white/12 tabular-nums">00:00</span>
-
+        <div className="flex items-center gap-0.5">
           <button
             onClick={onToggleVoice}
-            className={`p-2 rounded-lg transition-colors min-h-[44px] flex items-center justify-center ${
-              voiceSpeaking ? "text-[#00D4FF]" : voiceEnabled ? "text-white/30 hover:text-white/50" : "text-white/10 hover:text-white/25"
+            className={`p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${
+              voiceSpeaking ? "text-white" : voiceEnabled ? "text-white/50 hover:text-white/70" : "text-white/10 hover:text-white/25"
             }`}
             title={voiceEnabled ? "Voice on" : "Voice off"}
           >
             {voiceSpeaking ? (
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8.5v7a4.49 4.49 0 002.5-3.5zM14 3.23v2.06a7.007 7.007 0 010 13.42v2.06A9.01 9.01 0 0014 3.23z"/>
+              <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                <path d="M3 9v6h4l5 5V4L7 9H3z"/>
+                <path d="M16 7a7 7 0 010 10" strokeWidth={1.2}/>
+                <path d="M19 4a11 11 0 010 16" strokeWidth={0.8}/>
               </svg>
             ) : (
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5a7 7 0 00-7 7v4h3l4 4V5zM15.5 8.5A4.5 4.5 0 0115.5 15M19 7a9 9 0 010 10"/>
+              <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                <path d="M11 5a7 7 0 00-7 7v4h3l4 4V5z"/>
+                <path d="M19 7a9 9 0 010 10" strokeWidth={1.2} opacity={voiceEnabled ? 1 : 0.3}/>
+                <path d="M22 4a13 13 0 010 16" strokeWidth={0.8} opacity={voiceEnabled ? 1 : 0.3}/>
               </svg>
             )}
           </button>
 
           <button
             onClick={() => setSettingsOpen(true)}
-            className="text-white/20 hover:text-white/40 p-2 rounded-lg transition-colors min-h-[44px] flex items-center justify-center"
+            className="text-white/25 hover:text-white/50 p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
             title="Settings"
           >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
             </svg>
           </button>
 
           <button
             onClick={onClear}
-            className="text-white/25 hover:text-white/45 p-2 rounded-lg transition-colors min-h-[44px] flex items-center justify-center"
+            className="text-white/20 hover:text-white/40 p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
             title="Clear"
           >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+              <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
             </svg>
           </button>
         </div>

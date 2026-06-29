@@ -127,6 +127,7 @@ export function useJarvis() {
 
   const sendMessage = useCallback((text: string) => {
     const cfg = getConfig();
+    console.log("[sendMessage] provider=", cfg.activeProvider, "model=", cfg.activeModel, "hasKey=", !!cfg.openaiKey);
     if (ws.current?.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify({ type: "message", content: text }));
       return;
@@ -134,6 +135,7 @@ export function useJarvis() {
     if (!hasAnyKey()) {
       const label = cfg.activeProvider.charAt(0).toUpperCase() + cfg.activeProvider.slice(1);
       const msg = `No API key for ${label}. Open Settings to add one.`;
+      console.warn("[sendMessage] no key for", label);
       onErrorRef.current?.(msg);
       showToast(msg, "error");
       return;
@@ -141,17 +143,24 @@ export function useJarvis() {
     const tokenCb = onTokenRef.current;
     const doneCb = onDoneRef.current;
     const errorCb = onErrorRef.current;
-    if (!tokenCb) return;
+    if (!tokenCb) {
+      console.error("[sendMessage] tokenCb is null — Chat effect may not have run");
+      return;
+    }
 
     const msgs = [...historyRef.current, { role: "user" as const, content: text }];
 
+    console.log("[sendMessage] calling directChat with", msgs.length, "messages");
     (async () => {
       try {
         let full = "";
+        let count = 0;
         for await (const chunk of directChat(msgs)) {
           full += chunk;
           tokenCb(chunk);
+          count++;
         }
+        console.log("[sendMessage] directChat yielded", count, "chunks, full length =", full.length);
         historyRef.current = [
           ...historyRef.current,
           { role: "user", content: text },
@@ -164,6 +173,7 @@ export function useJarvis() {
         setBackend(`direct (${cfg.activeProvider})`);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
+        console.error("[sendMessage] error:", msg);
         errorCb?.(msg);
         showToast(msg, "error");
       }
