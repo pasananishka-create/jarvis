@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import gsap from "gsap";
 import { useJarvis } from "../hooks/useJarvis";
@@ -63,8 +63,14 @@ function BouncingDots() {
 
 function WordByWordText({ text, speed = 20, reduced }: { text: string; speed?: number; reduced: boolean }) {
   const [visible, setVisible] = useState(0);
-  const words = text.split(" ");
+  const textRef = useRef(text);
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
+  const words = useMemo(() => text.split(" "), [text]);
+
+  if (text !== textRef.current) {
+    textRef.current = text;
+    if (visible !== 0) setVisible(0);
+  }
 
   useEffect(() => {
     if (reduced) { setVisible(words.length); return; }
@@ -75,7 +81,9 @@ function WordByWordText({ text, speed = 20, reduced }: { text: string; speed?: n
       });
     }, speed);
     return () => clearInterval(timerRef.current);
-  }, [text, speed, reduced, words.length]);
+    // Only re-run effect when text actually changes value, not reference
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reduced, speed, text]);
 
   return <>{words.slice(0, visible).join(" ")}{visible < words.length && <span className="opacity-40">▎</span>}</>;
 }
@@ -95,7 +103,7 @@ function MessageContent({ content }: { content: string }) {
             </pre>
           );
         }
-        return <span key={i}>{part}</span>;
+        return <span key={i} className="whitespace-pre-wrap">{part}</span>;
       })}
     </>
   );
@@ -128,7 +136,7 @@ function MessagesList({
   const msgRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const animatedRef = useRef<Set<string>>(new Set());
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (lastMsg && lastMsg.role === "assistant") {
       setRespondingId(lastMsg.id);
       const wordCount = lastMsg.content.split(" ").length;
@@ -208,7 +216,7 @@ function MessagesList({
                   </span>
                   <MessageTime ts={msg.timestamp} />
                 </div>
-                <p className="text-[14px] sm:text-sm leading-[1.7] sm:leading-relaxed font-sans text-white/90">
+                <p className="text-[14px] sm:text-sm leading-[1.7] sm:leading-relaxed font-sans text-white/90 whitespace-pre-wrap">
                   {msg.role === "assistant" && respondingId === msg.id && !reduced ? (
                     <WordByWordText text={msg.content} reduced={reduced} />
                   ) : (
@@ -446,7 +454,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-[8px] font-mono tracking-[0.2em] text-white/60">J.A.R.V.I.S.</span>
                             </div>
-                            <p className="text-[14px] sm:text-sm leading-relaxed font-sans text-white/90">
+                            <p className="text-[14px] sm:text-sm leading-relaxed font-sans text-white/90 whitespace-pre-wrap">
                               {streamingText ? (
                                 <>{streamingText}<motion.span
                                   className="inline-block w-[1.5px] h-[13px] bg-white/50 ml-0.5 align-text-bottom"
