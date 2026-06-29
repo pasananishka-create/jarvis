@@ -86,7 +86,7 @@ export default function SettingsDialog({ open, onClose }: Props) {
 
   const keyField = (label: string, value: string | undefined, field: keyof DirectConfig) => (
     <div className="mb-5">
-      <label className="text-[10px] font-mono tracking-[0.15em] text-white/25 block mb-2">{label}</label>
+      <label className="text-[11px] font-mono tracking-[0.15em] text-white/50 block mb-2">{label}</label>
       <input
         value={value || ""}
         onChange={(e) => {
@@ -95,7 +95,7 @@ export default function SettingsDialog({ open, onClose }: Props) {
         }}
         type="password"
         placeholder="sk-..."
-        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[14px] font-mono text-white/70 placeholder-white/15 focus:outline-none focus:border-white/30 transition-colors min-h-[48px]"
+        className="w-full bg-[#222] border border-white/15 rounded-lg px-4 py-3 text-[14px] font-mono text-white/80 placeholder-white/25 focus:outline-none focus:border-white/40 transition-colors min-h-[48px]"
       />
     </div>
   );
@@ -105,23 +105,23 @@ export default function SettingsDialog({ open, onClose }: Props) {
       {open && (
         <>
           <motion.div
-            className="fixed inset-0 z-50 bg-black/80"
+            className="fixed inset-0 z-50 bg-black/60"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
           />
           <motion.div
-            className="fixed inset-x-0 bottom-0 z-50 bg-black border-t border-white/[0.06] max-h-[85vh] overflow-y-auto"
+            className="fixed inset-x-0 bottom-0 z-50 bg-[#1A1A1A] border-t border-white/[0.08] max-h-[85vh] overflow-y-auto"
             initial={{ y: 300, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 300, opacity: 0 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
             style={{ paddingBottom: "env(safe-area-inset-bottom, 16px)" }}
           >
-            <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-white/[0.04]">
-              <span className="text-[10px] font-mono tracking-[0.25em] text-white/40">SETTINGS</span>
-              <button onClick={onClose} className="text-white/30 hover:text-white/60 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
+            <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-white/[0.06]">
+              <span className="text-[11px] font-mono tracking-[0.25em] text-white/50">SETTINGS</span>
+              <button onClick={onClose} className="text-white/40 hover:text-white/70 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -129,7 +129,7 @@ export default function SettingsDialog({ open, onClose }: Props) {
             </div>
 
             <div className="px-5 pt-5 pb-6">
-              <p className="text-[11px] font-mono text-white/20 mb-5 leading-relaxed">
+              <p className="text-[12px] font-sans text-white/40 mb-5 leading-relaxed">
                 Add API keys to use AI providers directly. Keys stay on this device only.
               </p>
 
@@ -138,14 +138,14 @@ export default function SettingsDialog({ open, onClose }: Props) {
                   <button
                     key={p.id}
                     onClick={() => changeProvider(p.id)}
-                    className={`shrink-0 px-4 py-2.5 text-[10px] font-mono tracking-[0.1em] border transition-all min-h-[40px] ${
+                    className={`shrink-0 px-4 py-2.5 text-[11px] font-mono tracking-[0.1em] border transition-all min-h-[40px] ${
                       cfg.activeProvider === p.id
-                        ? "bg-white/10 border-white/30 text-white"
-                        : "bg-white/5 border-white/10 text-white/30 hover:text-white/50 hover:border-white/20"
+                        ? "bg-white/15 border-white/35 text-white"
+                        : "bg-white/5 border-white/10 text-white/40 hover:text-white/60 hover:border-white/20"
                     }`}
                   >
                     {p.label}
-                    {p.note && <span className="ml-1.5 text-[8px] text-white/15">({p.note})</span>}
+                    {p.note && <span className="ml-1.5 text-[9px] text-white/25">({p.note})</span>}
                   </button>
                 ))}
               </div>
@@ -156,26 +156,26 @@ export default function SettingsDialog({ open, onClose }: Props) {
 
               {cfg.activeProvider === "ollama" && (
                 <div className="mb-5">
-                  <label className="text-[10px] font-mono tracking-[0.15em] text-white/25 block mb-2">Ollama URL</label>
+                  <label className="text-[11px] font-mono tracking-[0.15em] text-white/50 block mb-2">Ollama URL</label>
                   <input
                     value={cfg.ollamaUrl || ""}
                     onChange={(e) => { update({ ollamaUrl: e.target.value }); setFetchError(null); }}
                     placeholder="http://192.168.1.100:11434"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[14px] font-mono text-white/70 placeholder-white/15 focus:outline-none focus:border-white/30 transition-colors min-h-[48px]"
+                    className="w-full bg-[#222] border border-white/15 rounded-lg px-4 py-3 text-[14px] font-mono text-white/80 placeholder-white/25 focus:outline-none focus:border-white/40 transition-colors min-h-[48px]"
                   />
                 </div>
               )}
 
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-mono tracking-[0.15em] text-white/25">MODELS</span>
+                  <span className="text-[11px] font-mono tracking-[0.15em] text-white/50">MODELS</span>
                   <button
                     onClick={handleRefreshModels}
                     disabled={!canRefresh || fetching}
-                    className={`text-[9px] font-mono tracking-[0.12em] px-3 py-2 border transition-all min-h-[36px] ${
+                    className={`text-[10px] font-mono tracking-[0.12em] px-3 py-2 border transition-all min-h-[36px] ${
                       canRefresh && !fetching
-                        ? "border-white/10 text-white/40 hover:text-white/60 hover:border-white/20"
-                        : "border-white/[0.04] text-white/10"
+                        ? "border-white/15 text-white/50 hover:text-white/70 hover:border-white/25"
+                        : "border-white/[0.06] text-white/15"
                     }`}
                   >
                     {fetching ? "REFRESHING..." : "REFRESH"}
@@ -183,7 +183,7 @@ export default function SettingsDialog({ open, onClose }: Props) {
                 </div>
 
                 {fetchError && (
-                  <p className="text-[9px] font-mono text-white/30 mb-3">{fetchError}</p>
+                  <p className="text-[10px] font-sans text-white/40 mb-3">{fetchError}</p>
                 )}
 
                 <div className="flex flex-wrap gap-2">
@@ -191,17 +191,17 @@ export default function SettingsDialog({ open, onClose }: Props) {
                     <button
                       key={m.id}
                       onClick={() => selectModel(m.id)}
-                      className={`px-3 py-2 text-[9px] font-mono tracking-[0.05em] border transition-all min-h-[36px] ${
+                      className={`px-3 py-2 text-[10px] font-mono tracking-[0.05em] border transition-all min-h-[36px] ${
                         cfg.activeModel === m.id
-                          ? "bg-white/15 border-white/40 text-white"
-                          : "bg-white/5 border-white/10 text-white/30 hover:text-white/50 hover:border-white/20"
+                          ? "bg-white/20 border-white/45 text-white"
+                          : "bg-white/5 border-white/10 text-white/40 hover:text-white/60 hover:border-white/20"
                       }`}
                     >
                       {m.name}
                     </button>
                   ))}
                   {fetchedModels.length === 0 && (
-                    <span className="text-[9px] font-mono text-white/15">No models available</span>
+                    <span className="text-[10px] font-mono text-white/25">No models available</span>
                   )}
                 </div>
               </div>

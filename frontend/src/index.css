@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
-/* Nothing OS-inspired monochrome theme */
-/* Dot-matrix glyph aesthetic — black, white, grey. No gradients. No shadows. */
+/* Brighter Nothing OS-inspired theme — lighter backgrounds, higher contrast */
 
 @theme {
   --color-nothing-black: #000000;
@@ -13,9 +12,9 @@
   --color-nothing-gray-400: #666666;
   --color-nothing-gray-500: #444444;
   --color-nothing-gray-600: #333333;
-  --color-nothing-gray-700: #222222;
-  --color-nothing-gray-800: #1A1A1A;
-  --color-nothing-gray-900: #111111;
+  --color-nothing-gray-700: #2A2A2A;
+  --color-nothing-gray-800: #1E1E1E;
+  --color-nothing-gray-900: #141414;
   --color-nothing-accent: #FFFFFF;
   --color-nothing-red: #FF4444;
   --font-sans: "Inter", "SF Pro Display", system-ui, -apple-system, sans-serif;
@@ -33,30 +32,28 @@
 html, body, #root {
   height: 100%;
   overflow: hidden;
-  background: #000000;
-  color: #FFFFFF;
+  background: #141414;
+  color: #F0F0F0;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Nothing OS dot-matrix scrollbar */
 ::-webkit-scrollbar {
-  width: 1px;
+  width: 2px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 ::selection {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   color: #FFFFFF;
 }
 
-/* Safe area */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 8px); }
 }
@@ -78,7 +75,6 @@ html, body, #root {
   }
 }
 
-/* Nothing OS mobile optimizations */
 @media (max-width: 639px) {
   html, body, #root {
     overscroll-behavior: none;
@@ -100,7 +96,6 @@ html, body, #root {
   will-change: transform, opacity;
 }
 
-/* Nothing glyph text effect — subtle dot-matrix feel */
 .glyph {
   letter-spacing: 0.15em;
   font-weight: 300;

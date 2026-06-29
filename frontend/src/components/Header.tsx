@@ -13,9 +13,9 @@ interface HeaderProps {
 }
 
 function StatusDot({ status }: { status: ConnectionStatus }) {
-  const color = status === "connected" ? "rgba(255,255,255,0.6)"
-    : status === "direct" ? "rgba(255,255,255,0.6)"
-    : "rgba(255,255,255,0.15)";
+  const color = status === "connected" ? "#FFFFFF"
+    : status === "direct" ? "#FFFFFF"
+    : "#555555";
   return (
     <div
       className="rounded-full shrink-0"
@@ -39,16 +39,16 @@ export default function Header({ status, backendInfo, onClear, voiceEnabled, voi
     ? backendInfo.active.split("(")[1]?.replace(")", "").trim() || ""
     : "";
 
-  const opacity = status === "disconnected" ? "opacity-30" : "opacity-100";
+  const opacity = status === "disconnected" ? "opacity-40" : "opacity-100";
 
   return (
-    <header className={`border-b border-white/[0.06] bg-black safe-top ${opacity}`}>
+    <header className={`border-b border-white/[0.08] bg-[#1A1A1A] safe-top ${opacity}`}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 flex items-center justify-between h-12">
         <div className="flex items-center gap-3 min-w-0">
           <StatusDot status={status} />
-          <span className="text-[10px] font-mono tracking-[0.25em] text-white/70">{statusLabels[status]}</span>
-          <span className="text-white/[0.06]">/</span>
-          <span className="text-[8px] font-mono text-white/25 truncate max-w-[80px] sm:max-w-[160px]">
+          <span className="text-[10px] font-mono tracking-[0.25em] text-white/80">{statusLabels[status]}</span>
+          <span className="text-white/[0.08]">/</span>
+          <span className="text-[8px] font-mono text-white/40 truncate max-w-[80px] sm:max-w-[160px]">
             {currentModel || currentBackend}
           </span>
         </div>
@@ -57,7 +57,7 @@ export default function Header({ status, backendInfo, onClear, voiceEnabled, voi
           <button
             onClick={onToggleVoice}
             className={`p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${
-              voiceSpeaking ? "text-white" : voiceEnabled ? "text-white/50 hover:text-white/70" : "text-white/10 hover:text-white/25"
+              voiceSpeaking ? "text-white" : voiceEnabled ? "text-white/70 hover:text-white" : "text-white/20 hover:text-white/40"
             }`}
             title={voiceEnabled ? "Voice on" : "Voice off"}
           >
@@ -78,7 +78,7 @@ export default function Header({ status, backendInfo, onClear, voiceEnabled, voi
 
           <button
             onClick={() => setSettingsOpen(true)}
-            className="text-white/25 hover:text-white/50 p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="text-white/40 hover:text-white/70 p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
             title="Settings"
           >
             <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
@@ -89,7 +89,7 @@ export default function Header({ status, backendInfo, onClear, voiceEnabled, voi
 
           <button
             onClick={onClear}
-            className="text-white/20 hover:text-white/40 p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="text-white/30 hover:text-white/60 p-2.5 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
             title="Clear"
           >
             <svg className="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>

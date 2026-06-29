@@ -118,11 +118,11 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
   return (
     <form
       onSubmit={handleSubmit}
-      className="border-t border-white/[0.06] bg-black safe-bottom"
+      className="border-t border-white/[0.08] bg-[#1A1A1A] safe-bottom"
     >
       {modelLabel && (
         <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-1.5">
-          <span className="text-[7px] font-mono tracking-[0.2em] text-white/10 truncate block">
+          <span className="text-[7px] font-mono tracking-[0.2em] text-white/20 truncate block">
             {modelLabel}
           </span>
         </div>
@@ -139,7 +139,7 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
             placeholder="Message..."
             disabled={disabled}
             enterKeyHint="send"
-            className="w-full bg-black border border-white/[0.08] rounded-lg px-4 py-3 text-[16px] sm:text-sm text-white/85 placeholder-white/10 focus:outline-none focus:border-white/20 transition-colors disabled:opacity-30 font-sans min-h-[48px]"
+            className="w-full bg-[#222222] border border-white/[0.12] rounded-lg px-4 py-3 text-[16px] sm:text-sm text-white/85 placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors disabled:opacity-30 font-sans min-h-[48px]"
           />
         </div>
 
@@ -149,8 +149,8 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
           disabled={disabled}
           className={`shrink-0 rounded-lg border transition-all flex items-center justify-center min-h-[48px] min-w-[48px] ${
             listening
-              ? "bg-white/10 border-white/30 text-white"
-              : "bg-black border-white/[0.08] text-white/30 hover:text-white/50 hover:border-white/20"
+              ? "bg-white/15 border-white/40 text-white"
+              : "bg-[#222222] border-white/[0.12] text-white/40 hover:text-white/70 hover:border-white/25"
           } disabled:opacity-25`}
           title={listening ? "Stop recording" : "Voice input"}
         >
@@ -166,7 +166,7 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
           className={`shrink-0 rounded-lg border transition-all flex items-center justify-center min-h-[48px] min-w-[48px] ${
             canSubmit
               ? "bg-white text-black border-white"
-              : "bg-black border-white/[0.08] text-white/12"
+              : "bg-[#222222] border-white/[0.12] text-white/20"
           } disabled:opacity-15 disabled:cursor-not-allowed`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

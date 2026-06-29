@@ -33,8 +33,8 @@ function Toast({ message, type, onDismiss }: { message: string; type: "success" 
   useEffect(() => { const t = setTimeout(onDismiss, 3000); return () => clearTimeout(t); }, [onDismiss]);
   return (
     <motion.div
-      className="fixed top-14 left-1/2 -translate-x-1/2 z-50 px-4 py-2 border border-white/[0.1] bg-black text-[9px] font-mono tracking-[0.15em]"
-      style={{ color: type === "error" ? "rgba(255,68,68,0.7)" : "rgba(255,255,255,0.6)" }}
+      className="fixed top-14 left-1/2 -translate-x-1/2 z-50 px-4 py-2 border border-white/[0.15] bg-[#222] text-[9px] font-mono tracking-[0.15em]"
+      style={{ color: type === "error" ? "rgba(255,68,68,0.8)" : "rgba(255,255,255,0.7)" }}
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12 }}
@@ -51,7 +51,7 @@ function BouncingDots() {
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          className="w-[3px] h-[3px] rounded-full bg-white/30 inline-block"
+          className="w-[3px] h-[3px] rounded-full bg-white/40 inline-block"
           animate={{ opacity: [0.2, 1, 0.2] }}
           transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.2 }}
         />
@@ -76,7 +76,7 @@ function WordByWordText({ text, speed = 20, reduced }: { text: string; speed?: n
     return () => clearInterval(timerRef.current);
   }, [text, speed, reduced, words.length]);
 
-  return <>{words.slice(0, visible).join(" ")}{visible < words.length && <span className="opacity-30">▎</span>}</>;
+  return <>{words.slice(0, visible).join(" ")}{visible < words.length && <span className="opacity-40">▎</span>}</>;
 }
 
 function MessageContent({ content }: { content: string }) {
@@ -89,7 +89,7 @@ function MessageContent({ content }: { content: string }) {
           const lang = code.split("\n")[0].trim();
           const body = code.includes("\n") ? code.slice(code.indexOf("\n") + 1) : code;
           return (
-            <pre key={i} className="text-[11px] font-mono leading-relaxed text-white/60 my-2 overflow-x-auto border-l border-white/10 pl-3">
+            <pre key={i} className="text-[11px] font-mono leading-relaxed text-white/70 my-2 overflow-x-auto border-l border-white/20 pl-3">
               <code>{body || lang}</code>
             </pre>
           );
@@ -106,7 +106,7 @@ function MessageTime({ ts }: { ts?: number }) {
   const h = d.getHours().toString().padStart(2, "0");
   const m = d.getMinutes().toString().padStart(2, "0");
   return (
-    <span className="text-[7px] font-mono tracking-[0.1em] text-white/15 whitespace-nowrap">{h}:{m}</span>
+    <span className="text-[7px] font-mono tracking-[0.1em] text-white/30 whitespace-nowrap">{h}:{m}</span>
   );
 }
 
@@ -180,7 +180,7 @@ function MessagesList({
           <div className="max-w-3xl mx-auto px-4 sm:px-6">
             <div className="flex items-start gap-3">
               <div className={`w-[18px] h-[18px] shrink-0 mt-0.5 flex items-center justify-center border ${
-                msg.role === "assistant" ? "border-white/20" : "border-white/10"
+                msg.role === "assistant" ? "border-white/25" : "border-white/12"
               }`}>
                 {msg.role === "assistant" ? (
                   <motion.svg className="w-[10px] h-[10px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
@@ -192,7 +192,7 @@ function MessagesList({
                     <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
                   </motion.svg>
                 ) : (
-                  <svg className="w-[10px] h-[10px] text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                  <svg className="w-[10px] h-[10px] text-white/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
                     <circle cx="12" cy="12" r="5"/>
                     <path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>
                   </svg>
@@ -201,13 +201,13 @@ function MessagesList({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`text-[8px] font-mono tracking-[0.2em] ${
-                    msg.role === "assistant" ? "text-white/50" : "text-white/30"
+                    msg.role === "assistant" ? "text-white/60" : "text-white/40"
                   }`}>
                     {msg.role === "assistant" ? "J.A.R.V.I.S." : "YOU"}
                   </span>
                   <MessageTime ts={msg.timestamp} />
                 </div>
-                <p className="text-[14px] sm:text-sm leading-[1.7] sm:leading-relaxed font-sans text-white/85">
+                <p className="text-[14px] sm:text-sm leading-[1.7] sm:leading-relaxed font-sans text-white/90">
                   {msg.role === "assistant" && respondingId === msg.id && !reduced ? (
                     <WordByWordText text={msg.content} reduced={reduced} />
                   ) : (
@@ -332,7 +332,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
     : backend;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-black" style={{ paddingBottom: keyboardHeight }}>
+    <div className="flex flex-col flex-1 min-h-0 bg-[#1A1A1A]" style={{ paddingBottom: keyboardHeight }}>
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} onDismiss={dismissToast} />}
       </AnimatePresence>
@@ -375,7 +375,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
               transition={{ duration: 0.5, delay: 0.3 }}
             >
               <motion.p
-                className="text-[10px] font-mono tracking-[0.2em] text-white/20 mb-5 text-center leading-relaxed max-w-xs"
+                className="text-[10px] font-mono tracking-[0.2em] text-white/30 mb-5 text-center leading-relaxed max-w-xs"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, delay: 0.5 }}
@@ -388,7 +388,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
                   <motion.button
                     key={action}
                     onClick={() => handleSend(action)}
-                    className="text-[9px] font-mono tracking-[0.1em] text-white/25 hover:text-white/50 border border-white/[0.06] hover:border-white/20 px-3.5 py-2 transition-all min-h-[36px]"
+                    className="text-[9px] font-mono tracking-[0.1em] text-white/40 hover:text-white/70 border border-white/10 hover:border-white/25 px-3.5 py-2 transition-all min-h-[36px]"
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: 0.7 + i * 0.06 }}
@@ -428,7 +428,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
                     >
                       <div className="max-w-3xl mx-auto px-4 sm:px-6">
                         <div className="flex items-start gap-3">
-                          <div className="w-[18px] h-[18px] shrink-0 mt-0.5 flex items-center justify-center border border-white/20">
+                          <div className="w-[18px] h-[18px] shrink-0 mt-0.5 flex items-center justify-center border border-white/25">
                             <motion.svg className="w-[10px] h-[10px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}
                               animate={speaking ? { opacity: [1, 0.4, 1] } : {}}
                               transition={{ duration: 1.2, repeat: Infinity }}
@@ -440,17 +440,17 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-[8px] font-mono tracking-[0.2em] text-white/50">J.A.R.V.I.S.</span>
+                              <span className="text-[8px] font-mono tracking-[0.2em] text-white/60">J.A.R.V.I.S.</span>
                             </div>
-                            <p className="text-[14px] sm:text-sm leading-relaxed font-sans text-white/85">
+                            <p className="text-[14px] sm:text-sm leading-relaxed font-sans text-white/90">
                               {streamingText ? (
                                 <>{streamingText}<motion.span
-                                  className="inline-block w-[1.5px] h-[13px] bg-white/40 ml-0.5 align-text-bottom"
+                                  className="inline-block w-[1.5px] h-[13px] bg-white/50 ml-0.5 align-text-bottom"
                                   animate={{ opacity: [1, 0] }}
                                   transition={{ duration: 0.6, repeat: Infinity, repeatType: "reverse" }}
                                 /></>
                               ) : (
-                                <span className="inline-flex items-center text-[10px] font-mono tracking-[0.1em] text-white/25">
+                                <span className="inline-flex items-center text-[10px] font-mono tracking-[0.1em] text-white/50">
                                   Processing<BouncingDots />
                                 </span>
                               )}
@@ -470,8 +470,8 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -8 }}
                     >
-                      <div className="flex items-center gap-2 px-3 py-2 border border-white/10">
-                        <span className="text-[8px] font-mono text-white/40">{errorMsg}</span>
+                      <div className="flex items-center gap-2 px-3 py-2 border border-white/15">
+                        <span className="text-[8px] font-mono text-white/50">{errorMsg}</span>
                       </div>
                     </motion.div>
                   )}

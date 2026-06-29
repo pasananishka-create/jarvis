@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 
 type RingState = "idle" | "listening" | "processing" | "responding" | "error";
 
@@ -25,7 +26,7 @@ function StateGlyph({ state, reduced }: { state: RingState; reduced: boolean }) 
   const listening = state === "listening";
   const error = state === "error";
 
-  const opacity = error ? "opacity-40" : idle ? "opacity-50" : "opacity-80";
+  const opacity = error ? "opacity-60" : idle ? "opacity-70" : "opacity-90";
 
   if (processing) {
     return (
@@ -68,8 +69,8 @@ function StateGlyph({ state, reduced }: { state: RingState; reduced: boolean }) 
 
   if (error) {
     return (
-      <svg className="w-full h-full opacity-40" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth={1.2}>
-        <circle cx="16" cy="16" r="12" opacity={0.3} />
+      <svg className="w-full h-full opacity-60" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth={1.2}>
+        <circle cx="16" cy="16" r="12" opacity={0.4} />
         <path d="M11 11l10 10M21 11l-10 10" />
       </svg>
     );
@@ -87,13 +88,10 @@ function StateGlyph({ state, reduced }: { state: RingState; reduced: boolean }) 
         style={{ originX: "16px", originY: "16px" }}
         transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
       />
-      <circle cx="16" cy="16" r="2" fill="currentColor" opacity={0.5} />
+      <circle cx="16" cy="16" r="2" fill="currentColor" opacity={0.7} />
     </svg>
   );
 }
-
-// Import motion from framer-motion at the top of the file
-import { motion } from "framer-motion";
 
 export default function CentralRing({ state, mini }: CentralRingProps) {
   const reduced = useReducedMotion();
