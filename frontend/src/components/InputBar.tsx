@@ -253,7 +253,6 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
         <button
           type="button"
           onClick={toggleMic}
-          onTouchStart={(e) => { e.preventDefault(); toggleMic(); }}
           disabled={disabled || micUnsupported}
           className="shrink-0 rounded-lg transition-all flex items-center justify-center min-h-[48px] min-w-[48px] disabled:opacity-25"
           style={{
