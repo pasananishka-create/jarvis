@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useVisualViewport } from "./hooks/useVisualViewport";
 import MountSequence from "./components/MountSequence";
@@ -48,11 +48,14 @@ export default function App() {
     }
   }, []);
 
+  const playRef = useRef(sound.play);
+  playRef.current = sound.play;
+
   // Play startup sound when splash finishes
   const onSplashComplete = useCallback(() => {
     setShowSplash(false);
-    sound.play("startup");
-  }, [sound]);
+    playRef.current("startup");
+  }, []);
 
   const backendInfo = {
     active: backend,
