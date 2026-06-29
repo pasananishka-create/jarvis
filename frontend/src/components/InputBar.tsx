@@ -96,8 +96,12 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
         if (e.results[i].isFinal) {
           const t = e.results[i][0].transcript;
           setText((prev) => prev ? prev + " " + t : t);
-          setTimeout(() => inputRef.current?.focus(), 0);
           stopListening();
+          setTimeout(() => {
+            if (t) onSend(t);
+            setText("");
+            inputRef.current?.focus();
+          }, 100);
           return;
         }
       }
@@ -105,7 +109,7 @@ export default function InputBar({ onSend, disabled, onFocusChange, modelLabel }
     r.onerror = () => stopListening();
     r.onend = () => { if (listeningRef.current) stopListening(); };
     try { r.start(); } catch { stopListening(); }
-  }, [listening, stopListening]);
+  }, [listening, stopListening, onSend]);
 
   useEffect(() => () => stopListening(), [stopListening]);
 

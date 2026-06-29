@@ -7,6 +7,9 @@ interface HeaderProps {
   status: ConnectionStatus;
   backendInfo: BackendInfo;
   onClear: () => void;
+  voiceEnabled: boolean;
+  voiceSpeaking: boolean;
+  onToggleVoice: () => void;
 }
 
 function StatusDot({ status }: { status: ConnectionStatus }) {
@@ -24,7 +27,23 @@ function StatusDot({ status }: { status: ConnectionStatus }) {
   );
 }
 
-export default function Header({ status, backendInfo, onClear }: HeaderProps) {
+function VoiceWave() {
+  return (
+    <span className="inline-flex items-center gap-[1.5px] ml-1">
+      {[1, 2, 3].map((i) => (
+        <motion.span
+          key={i}
+          className="w-[2px] rounded-full bg-current"
+          style={{ height: 6 + i * 2 }}
+          animate={{ height: [6 + i * 2, 2, 6 + i * 2] }}
+          transition={{ duration: 0.5 + i * 0.1, repeat: Infinity, ease: "easeInOut" }}
+        />
+      ))}
+    </span>
+  );
+}
+
+export default function Header({ status, backendInfo, onClear, voiceEnabled, voiceSpeaking, onToggleVoice }: HeaderProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const currentBackend = backendInfo.active.split(" ")[0];
@@ -59,6 +78,24 @@ export default function Header({ status, backendInfo, onClear }: HeaderProps) {
         {/* Right */}
         <div className="flex items-center gap-1">
           <span className="text-[8px] font-mono text-white/12 tabular-nums">00:00</span>
+
+          <button
+            onClick={onToggleVoice}
+            className={`p-2 rounded-lg transition-colors min-h-[44px] flex items-center justify-center ${
+              voiceSpeaking ? "text-[#00D4FF]" : voiceEnabled ? "text-white/30 hover:text-white/50" : "text-white/10 hover:text-white/25"
+            }`}
+            title={voiceEnabled ? "Voice on" : "Voice off"}
+          >
+            {voiceSpeaking ? (
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8.5v7a4.49 4.49 0 002.5-3.5zM14 3.23v2.06a7.007 7.007 0 010 13.42v2.06A9.01 9.01 0 0014 3.23z"/>
+              </svg>
+            ) : (
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5a7 7 0 00-7 7v4h3l4 4V5zM15.5 8.5A4.5 4.5 0 0115.5 15M19 7a9 9 0 010 10"/>
+              </svg>
+            )}
+          </button>
 
           <button
             onClick={() => setSettingsOpen(true)}

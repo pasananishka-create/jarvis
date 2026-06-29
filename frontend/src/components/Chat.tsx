@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import gsap from "gsap";
 import { useJarvis } from "../hooks/useJarvis";
+import { useSpeech } from "../hooks/useSpeech";
 import type { Message, BackendInfo } from "../types";
 import Header from "./Header";
 import CentralRing from "./CentralRing";
@@ -60,14 +61,17 @@ function MessageTime({ ts }: { ts: number }) {
   return <span className="text-white/12 text-[9px] font-mono tabular-nums">{h}:{m}</span>;
 }
 
-function JarvisIcon() {
+function JarvisIcon({ speaking }: { speaking?: boolean }) {
   return (
-    <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={1.5} className="text-[#00D4FF]/30" />
+    <motion.svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" fill="none"
+      animate={speaking ? { scale: [1, 1.08, 1] } : {}}
+      transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
+    >
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={1.5} className="text-[#00D4FF]/30" style={speaking ? { filter: "drop-shadow(0 0 4px rgba(0,212,255,0.4))" } : {}} />
       <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth={1.5} className="text-[#00D4FF]/40" />
       <path d="M12 2v4M12 18v4M2 12h4M18 12h4" stroke="currentColor" strokeWidth={1.2} className="text-[#00D4FF]/25" />
       <circle cx="12" cy="12" r="1.5" fill="currentColor" className="text-[#00D4FF]/50" />
-    </svg>
+    </motion.svg>
   );
 }
 
@@ -152,10 +156,12 @@ function MessageContent({ content }: { content: string }) {
 function MessagesList({
   messages,
   reduced,
+  speaking,
   onRespondingDone,
 }: {
   messages: Message[];
   reduced: boolean;
+  speaking: boolean;
   onRespondingDone: () => void;
 }) {
   const lastMsg = messages[messages.length - 1];
@@ -224,7 +230,7 @@ function MessagesList({
             <div className="flex flex-col items-center gap-1 pt-1 shrink-0">
               {msg.role === "assistant" ? (
                 <div className="w-[22px] h-[22px] rounded-full bg-[#00D4FF]/8 border border-[#00D4FF]/15 flex items-center justify-center">
-                  <JarvisIcon />
+                  <JarvisIcon speaking={speaking} />
                 </div>
               ) : (
                 <div className="w-[22px] h-[22px] rounded-full bg-[#00D4FF]/10 flex items-center justify-center">
@@ -289,6 +295,7 @@ function SuggestionChips({ onSelect }: { onSelect: (text: string) => void }) {
 
 export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }) {
   const { status, backend, models, toast, sendMessage, sendCommand, onToken, onDone, onError, dismissToast } = useJarvis();
+  const { voiceEnabled, toggleVoice, speaking, speak, stop: stopSpeech, supported } = useSpeech();
   const [messages, setMessages] = useState<Message[]>([]);
   const [streamingText, setStreamingText] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -316,12 +323,13 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
     });
 
     onDone((bck) => {
+      const content = streamTextRef.current;
       setMessages((prev) => [
         ...prev,
         {
           id: `a-${Date.now()}`,
           role: "assistant",
-          content: streamTextRef.current,
+          content,
           timestamp: Date.now(),
         },
       ]);
@@ -329,6 +337,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
       streamTextRef.current = "";
       setThinking(false);
       setErrorMsg(null);
+      if (voiceEnabled && content) speak(content);
     });
 
     onError((err) => {
@@ -396,6 +405,9 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
         status={status}
         backendInfo={backendInfo}
         onClear={handleClear}
+        voiceEnabled={voiceEnabled}
+        voiceSpeaking={speaking}
+        onToggleVoice={toggleVoice}
       />
 
       <div className="flex-1 flex flex-col min-h-0 relative">
@@ -469,6 +481,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
                 <MessagesList
                   messages={messages}
                   reduced={reduced}
+                  speaking={speaking}
                   onRespondingDone={() => {}}
                 />
 
@@ -484,7 +497,7 @@ export default function Chat({ keyboardHeight = 0 }: { keyboardHeight?: number }
                       <div className="flex gap-2.5 max-w-[90%] sm:max-w-[80%] md:max-w-[75%]">
                         <div className="flex flex-col items-center gap-1 pt-1 shrink-0">
                           <div className="w-[22px] h-[22px] rounded-full bg-[#00D4FF]/8 border border-[#00D4FF]/15 flex items-center justify-center">
-                            <JarvisIcon />
+                            <JarvisIcon speaking={speaking} />
                           </div>
                         </div>
                         <div className="min-w-0">
