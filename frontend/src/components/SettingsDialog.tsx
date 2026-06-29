@@ -10,7 +10,7 @@ interface Props {
 const PROVIDERS: { id: DirectConfig["activeProvider"]; label: string; note?: string }[] = [
   { id: "openai", label: "OpenAI" },
   { id: "anthropic", label: "Anthropic" },
-  { id: "nvidia", label: "NVIDIA", note: "APK only" },
+  { id: "nvidia", label: "NVIDIA", note: "APK" },
   { id: "ollama", label: "Ollama" },
 ];
 
@@ -85,8 +85,8 @@ export default function SettingsDialog({ open, onClose }: Props) {
   const canRefresh = hasKeyForProvider(cfg.activeProvider);
 
   const keyField = (label: string, value: string | undefined, field: keyof DirectConfig) => (
-    <div className="mb-4">
-      <label className="text-[7px] font-mono tracking-[0.2em] text-white/20 block mb-1.5">{label}</label>
+    <div className="mb-5">
+      <label className="text-[10px] font-mono tracking-[0.15em] text-white/25 block mb-2">{label}</label>
       <input
         value={value || ""}
         onChange={(e) => {
@@ -95,7 +95,7 @@ export default function SettingsDialog({ open, onClose }: Props) {
         }}
         type="password"
         placeholder="sk-..."
-        className="w-full bg-black border border-white/[0.08] rounded-none px-3 py-2.5 text-[12px] font-mono text-white/60 placeholder-white/8 focus:outline-none focus:border-white/20 transition-colors min-h-[40px]"
+        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[14px] font-mono text-white/70 placeholder-white/15 focus:outline-none focus:border-white/30 transition-colors min-h-[48px]"
       />
     </div>
   );
@@ -119,33 +119,33 @@ export default function SettingsDialog({ open, onClose }: Props) {
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
             style={{ paddingBottom: "env(safe-area-inset-bottom, 16px)" }}
           >
-            <div className="px-4 pt-4 pb-2 flex items-center justify-between border-b border-white/[0.04]">
-              <span className="text-[8px] font-mono tracking-[0.25em] text-white/30">SETTINGS</span>
-              <button onClick={onClose} className="text-white/20 p-1.5 min-h-[40px] flex items-center justify-center">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-white/[0.04]">
+              <span className="text-[10px] font-mono tracking-[0.25em] text-white/40">SETTINGS</span>
+              <button onClick={onClose} className="text-white/30 hover:text-white/60 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            <div className="px-4 pt-4">
-              <p className="text-[9px] font-mono text-white/15 mb-4 leading-relaxed">
-                Enter API keys to use AI providers directly from this device. Keys are stored locally.
+            <div className="px-5 pt-5 pb-6">
+              <p className="text-[11px] font-mono text-white/20 mb-5 leading-relaxed">
+                Add API keys to use AI providers directly. Keys stay on this device only.
               </p>
 
-              <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
+              <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
                 {PROVIDERS.map((p) => (
                   <button
                     key={p.id}
                     onClick={() => changeProvider(p.id)}
-                    className={`shrink-0 px-3 py-2 text-[8px] font-mono tracking-[0.12em] border transition-all min-h-[36px] ${
+                    className={`shrink-0 px-4 py-2.5 text-[10px] font-mono tracking-[0.1em] border transition-all min-h-[40px] ${
                       cfg.activeProvider === p.id
                         ? "bg-white/10 border-white/30 text-white"
-                        : "bg-black border-white/[0.06] text-white/20 hover:text-white/35"
+                        : "bg-white/5 border-white/10 text-white/30 hover:text-white/50 hover:border-white/20"
                     }`}
                   >
                     {p.label}
-                    {p.note && <span className="ml-1 text-[6px] text-white/10">({p.note})</span>}
+                    {p.note && <span className="ml-1.5 text-[8px] text-white/15">({p.note})</span>}
                   </button>
                 ))}
               </div>
@@ -155,53 +155,53 @@ export default function SettingsDialog({ open, onClose }: Props) {
               {cfg.activeProvider === "anthropic" && keyField("Anthropic API Key", cfg.anthropicKey, "anthropicKey")}
 
               {cfg.activeProvider === "ollama" && (
-                <div className="mb-4">
-                  <label className="text-[7px] font-mono tracking-[0.2em] text-white/20 block mb-1.5">Ollama URL</label>
+                <div className="mb-5">
+                  <label className="text-[10px] font-mono tracking-[0.15em] text-white/25 block mb-2">Ollama URL</label>
                   <input
                     value={cfg.ollamaUrl || ""}
                     onChange={(e) => { update({ ollamaUrl: e.target.value }); setFetchError(null); }}
                     placeholder="http://192.168.1.100:11434"
-                    className="w-full bg-black border border-white/[0.08] rounded-none px-3 py-2.5 text-[12px] font-mono text-white/60 placeholder-white/8 focus:outline-none focus:border-white/20 transition-colors min-h-[40px]"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-[14px] font-mono text-white/70 placeholder-white/15 focus:outline-none focus:border-white/30 transition-colors min-h-[48px]"
                   />
                 </div>
               )}
 
               <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[7px] font-mono tracking-[0.2em] text-white/20">MODELS</span>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] font-mono tracking-[0.15em] text-white/25">MODELS</span>
                   <button
                     onClick={handleRefreshModels}
                     disabled={!canRefresh || fetching}
-                    className={`text-[7px] font-mono tracking-[0.12em] px-2.5 py-1.5 border transition-all min-h-[32px] ${
+                    className={`text-[9px] font-mono tracking-[0.12em] px-3 py-2 border transition-all min-h-[36px] ${
                       canRefresh && !fetching
                         ? "border-white/10 text-white/40 hover:text-white/60 hover:border-white/20"
                         : "border-white/[0.04] text-white/10"
                     }`}
                   >
-                    {fetching ? "..." : "REFRESH"}
+                    {fetching ? "REFRESHING..." : "REFRESH"}
                   </button>
                 </div>
 
                 {fetchError && (
-                  <p className="text-[8px] font-mono text-white/30 mb-2">{fetchError}</p>
+                  <p className="text-[9px] font-mono text-white/30 mb-3">{fetchError}</p>
                 )}
 
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2">
                   {fetchedModels.map((m) => (
                     <button
                       key={m.id}
                       onClick={() => selectModel(m.id)}
-                      className={`px-2.5 py-1.5 text-[8px] font-mono tracking-[0.05em] border transition-all min-h-[28px] ${
+                      className={`px-3 py-2 text-[9px] font-mono tracking-[0.05em] border transition-all min-h-[36px] ${
                         cfg.activeModel === m.id
                           ? "bg-white/15 border-white/40 text-white"
-                          : "bg-black border-white/[0.06] text-white/25 hover:text-white/40 hover:border-white/15"
+                          : "bg-white/5 border-white/10 text-white/30 hover:text-white/50 hover:border-white/20"
                       }`}
                     >
                       {m.name}
                     </button>
                   ))}
                   {fetchedModels.length === 0 && (
-                    <span className="text-[8px] font-mono text-white/10">No models available</span>
+                    <span className="text-[9px] font-mono text-white/15">No models available</span>
                   )}
                 </div>
               </div>
